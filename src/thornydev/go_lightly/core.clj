@@ -47,6 +47,8 @@
     (close ch)
     (future-cancel ft)))
 
+;; ---[ four ]--- ;;
+
 (defn boring-four []
   (let [ch (channel)]
     (future (loop [x 0]
@@ -62,6 +64,8 @@
       (println "You say:" @(read-channel ch)))
     (close ch)
     (println "You're boring. I'm leaving.")))
+
+;; ---[ five ]--- ;;
 
 (defn boring-five [msg]
   (let [ch (channel)]
@@ -82,7 +86,9 @@
     (close ann-ch)
     (println "You're boring. I'm leaving.")))
 
-(defn six []
+;; ---[ six ]--- ;;
+
+(defn six-two-separate-channels []
   (with-channel-open [joe-ch (boring-five "Joe")
                       ann-ch (boring-five "Ann")]
     (dotimes [_ 5]
@@ -90,6 +96,50 @@
       (println @(read-channel ann-ch)))
     (println "You're boring. I'm leaving.")))
 
+;; ---[ seven ]--- ;;
+
+(defn seven-boring [name ch]
+  (loop [x 0]
+    (Thread/sleep (rand-int 1000))
+    (enqueue ch (str name ": " x))
+    (when (not (closed? ch))
+      (recur (inc x)))))
+
+(defn seven-fan-in
+  "want the producers to be able to independently push onto
+   the same channel at their own pace"
+  []
+  (with-channel-open [ch (channel)]
+    (future (seven-boring "Joe" ch))
+    (future (seven-boring "Ann" ch))
+    (dotimes [_ 10]
+      (println @(read-channel ch)))))
+
+;; ---[ eight ]--- ;;
+
+(defn eight-boring [name msg-ch wait-ch]
+  (loop [x 0]
+    (Thread/sleep (rand-int 1000))
+    (enqueue msg-ch (str name ": " x))
+    (when (not (closed? msg-ch))
+      (when @(read-channel wait-ch)
+        (recur (inc x)))))
+  )
+
+(defn eight-wait-channel []
+  (with-channel-open [msg-ch (channel)
+                      wait-ch (channel)]
+    (future (eight-boring "Joe" msg-ch wait-ch))
+    (future (eight-boring "Ann" msg-ch wait-ch))
+    (dotimes [_ 10]
+      (println @(read-channel msg-ch))
+      ;; TODO: this is dangerous, one might get two trues in a row rather than alternating
+      ;;       better to fork the channel, one for Joe and one for Ann?  How do that?
+      (dotimes [_ 2]
+        (enqueue wait-ch true)))
+    (dotimes [_ 2]
+      (enqueue wait-ch false))))
+
 (defn -main [& args]
-  (five)
+  (eight-wait-channel)
   (shutdown-agents))
