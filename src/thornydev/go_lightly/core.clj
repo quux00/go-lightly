@@ -131,15 +131,58 @@
                       wait-ch (channel)]
     (future (eight-boring "Joe" msg-ch wait-ch))
     (future (eight-boring "Ann" msg-ch wait-ch))
-    (dotimes [_ 10]
+    (dotimes [_ 5]
+      (println @(read-channel msg-ch))
       (println @(read-channel msg-ch))
       ;; TODO: this is dangerous, one might get two trues in a row rather than alternating
       ;;       better to fork the channel, one for Joe and one for Ann?  How do that?
-      (dotimes [_ 2]
-        (enqueue wait-ch true)))
-    (dotimes [_ 2]
-      (enqueue wait-ch false))))
+      (dotimes [_ 2] (enqueue wait-ch true)))
+    (dotimes [_ 2] (enqueue wait-ch false))))
+
+(defn nine-two-wait-channels []
+  (with-channel-open [msg-ch (channel)
+                      joe-wait-ch (channel)
+                      ann-wait-ch (channel)]
+    (future (eight-boring "Joe" msg-ch joe-wait-ch))
+    (future (eight-boring "Ann" msg-ch ann-wait-ch))
+    (dotimes [_ 5]
+      (println @(read-channel msg-ch))
+      (println @(read-channel msg-ch))
+      ;; now only have to enqueue "true" once, not twice
+      ;; since the fork will take care of delivering it twice
+      (enqueue joe-wait-ch true)
+      (enqueue ann-wait-ch true))
+    (enqueue joe-wait-ch false)
+    (enqueue ann-wait-ch false)))
+
+
+(defn ten-forked-wait-channel []
+  (with-channel-open [msg-ch (channel)
+                      wait-ch (channel)]
+    (future (eight-boring "Joe" msg-ch wait-ch))
+    (future (eight-boring "Ann" msg-ch (fork wait-ch)))  ;; give Ann a fork of the channel
+    (dotimes [_ 5]
+      (println @(read-channel msg-ch))
+      (println @(read-channel msg-ch))
+      ;; now only have to enqueue "true" once, not twice
+      ;; since the fork will take care of delivering it twice
+      (enqueue wait-ch true))
+    (enqueue wait-ch false)))
+
 
 (defn -main [& args]
-  (eight-wait-channel)
+  (doseq [arg args]
+    (case (keyword (subs arg 1))
+      :one (one)
+      :two (two)
+      :three (three)
+      :four (four)
+      :five (five)
+      :six (six-two-separate-channels)
+      :seven (seven-fan-in)
+      :eight (eight-wait-channel)
+      :nine (nine-two-wait-channels)
+      :ten (ten-forked-wait-channel)
+      (println "WARN: argument not recognized"))
+    (println "------------------"))
   (shutdown-agents))
