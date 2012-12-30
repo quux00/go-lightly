@@ -77,42 +77,52 @@
                  (fn [_] nil))          ;; error callback: do nothing
     ))
 
-;; try to solve this with (take* 1) for the next impl
+;; alternative to the enqueue-first that is (probably)
+;; more idiomatic lamina usage
+(defn enqueue-first-take1 [main-chain query & replicas]
+  (let [local-chan (channel)
+        first-result-chan (take* 1 local-chan)]
+    (doseq [rep replicas] (future (enqueue local-chan (rep query))))
+    (receive-all first-result-chan
+                 #(enqueue main-chain %))  ;; callback handler
+    ))
+
 (defn google-3-alpha
   "Gets the first of web, image and video but with no timeout.
    Uses enqueue-first which uses on-realized callbacks."
   [query]
-  (let [ch (channel)]
-    (future (enqueue-first ch "clojure" (fake-search "web1")   (fake-search "web2")))
-    (future (enqueue-first ch "clojure" (fake-search "image1") (fake-search "image2")))
-    (future (enqueue-first ch "clojure" (fake-search "video1") (fake-search "video2")))
+  (let [ch (channel)
+        qfirst (partial enqueue-first-take1 ch "clojure")]
+    (future (qfirst (fake-search "web1")   (fake-search "web2")))
+    (future (qfirst (fake-search "image1") (fake-search "image2")))
+    (future (qfirst (fake-search "video1") (fake-search "video2")))
     (vec
      (for [_ (range 3)] @(read-channel ch)))))
 
-(comment
-  (defn google-3 [query]
-    (let [ch (channel)
-          timeout 80]
-      ;; launch all the "go-routines" (futures)
-      (future (enqueue-first ch "clojure" (fake-search "web1")   (fake-search "web2")))
-      (future (enqueue-first ch "clojure" (fake-search "image1") (fake-search "image2")))
-      (future (enqueue-first ch "clojure" (fake-search "video1") (fake-search "video2")))
+(defn google-3 [query]
+  (let [ch (channel)
+        qfirst (partial enqueue-first-take1 ch "clojure")
+        timeout 80]
+    ;; launch all the "go-routines" (futures)
+    (future (qfirst (fake-search "web1")   (fake-search "web2")))
+    (future (qfirst (fake-search "image1") (fake-search "image2")))
+    (future (qfirst (fake-search "video1") (fake-search "video2")))
 
-      ;; collect responses within a defined timeout window
-      (let [start (now)] ()
-           (loop [time-left timeout responses []]
-             (if (= 3 (count responses))
-               responses
-               (if (<= time-left 0)
-                 (do (println "Timed out") responses)
-                 (let [timed-chan (with-timeout time-left (read-channel ch))]
-                   (try
-                     @timed-chan
-                     (catch TimeoutException e (println "Timed out")))
-                   (if (timed-out? timed-chan)
-                     responses
-                     (recur (- timeout (since start)) (conj responses @timed-chan)))))))))  
-    ))
+    ;; collect responses within a defined timeout window
+    (let [start (now)]
+      (loop [time-left timeout responses []]
+        (if (= 3 (count responses))
+          responses
+          (if (<= time-left 0)
+            (do (println "Timed out") responses)
+            (let [timed-chan (with-timeout time-left (read-channel ch))]
+              (try
+                @timed-chan
+                (catch TimeoutException e (println "Timed out")))
+              (if (timed-out? timed-chan)
+                responses
+                (recur (- timeout (since start)) (conj responses @timed-chan)))))))))  
+  )
 
 (defn get-google-fn [version]
   (case version
@@ -120,7 +130,8 @@
     :twof google-20f
     :twoc google-20c
     :2.1 google-21
-    :3-alpha google-3-alpha))
+    :3-alpha google-3-alpha
+    :three google-3))
 
 (defn google-main [version]
   (let [start (now)
