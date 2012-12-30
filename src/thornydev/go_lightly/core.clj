@@ -20,6 +20,7 @@
       :google-2f (google-main :twof)
       :google-2c (google-main :twoc)
       :google-2.1 (google-main :2.1)
+      :google-2-alpha (google-main :3-alpha)
       (println "WARN: argument not recognized"))
     (println "------------------"))
   (shutdown-agents))
