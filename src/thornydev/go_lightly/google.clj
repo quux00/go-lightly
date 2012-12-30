@@ -18,8 +18,12 @@
 (def image (fake-search "image"))
 (def video (fake-search "video"))
 
+;; ---[ Google 1.0 Search ]--- ;;
+
 (defn google-1 [query]
   (reduce #(conj % (%2 query)) [] [web image video]))
+
+;; ---[ Google 2.0 Search ]--- ;;
 
 (defn google-20f [query]
   (let [futs (doall (mapv #(future (% query)) [web image video]))]
@@ -30,6 +34,8 @@
     (doseq [qf [web image video]] (future (enqueue ch (qf query))))
     (mapv (fn [_] @(read-channel ch)) (range 3))
     ))
+
+;; ---[ Google 2.1 Search ]--- ;;
 
 (defn timed-out?
   "This is a hack to parse the toString output of a timed ResultChannel
@@ -60,13 +66,16 @@
                 responses
                 (recur (- timeout (since start)) (conj responses @timed-chan))))))))))
 
-(defn first-responder [query & replicas]
-  (let [ch (channel)
-        first-result (read-channel ch)]
-    (doseq [rep replicas] (future (enqueue ch (rep query))))
-    ;; TODO: what do here?
-    )
-  )
+;; ---[ Google 3.0 Search ]--- ;;
+
+;; Pike emphasizes that there are no locks, condition variables or callbacks
+;; in his Go version.
+;; In my version I (of course) have no locks. I only have condition variables
+;; in the complex timeout logic, which I'm hoping that lamina has tools to
+;; solve or at worst can be solved with a macro.
+;; I do use one callback in the enqueue-first/-take1 fns in order to push
+;; from the local channels onto the main channel.  I suspect Go is doing
+;; the same thing, but it is hidden by their syntax.  Can lamina do the same?
 
 (defn enqueue-first [main-chan query & replicas]
   (let [local-chan (channel)
