@@ -21,7 +21,7 @@
 
 (use 'lamina.core)
 
-(defn boring 
+(defn- boring 
   [name] 
   (let [ch (channel)] 
     ;; future will run separately from main control flow
@@ -37,7 +37,7 @@
 (defn k1-main1 []
   ;; With single instance
   (let [joe (boring "Joe")] 
-    (doseq [msg (lazy-channel-seq (take* 5 joe))] (println msg)))
+    (doseq [msg (channel->lazy-seq (take* 5 joe))] (println msg)))
   (println "You're boring: I'm leaving."))
 
 (defn k1-main2 []

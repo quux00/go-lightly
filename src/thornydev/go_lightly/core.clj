@@ -1,6 +1,8 @@
 (ns thornydev.go-lightly.core
   (:require [thornydev.go-lightly.boring :refer :all]
-            [thornydev.go-lightly.boring-task :refer [task-one]]
+            [thornydev.go-lightly.kachayev1 :refer :all]
+            [thornydev.go-lightly.goboring-generator :as gen]
+            [thornydev.go-lightly.goboring-generator-lamina :as genlam]
             [thornydev.go-lightly.google :refer :all]
             [thornydev.go-lightly.conc-prime-sieve :refer [sieve-main]])
   (:gen-class))
@@ -8,7 +10,10 @@
 (defn -main [& args]
   (doseq [arg args]
     (case (keyword (subs arg 1))
-      :task1 (task-one)
+      :gen1 (gen/single-generator)
+      :gen2 (gen/multiple-generators)
+      :gen1lam (genlam/single-generator)
+      :gen2lam (genlam/multiple-generators)
       
       ;; ---[ simple Pike go examples ]--- ;;
       :one (one)
@@ -22,6 +27,13 @@
       :nine (nine-two-wait-channels)
       :ten (ten-forked-wait-channel)
 
+      ;; --- [ kaychayev's code ] --- ;;
+      :k1 (k1-main1)
+      :k2 (k1-main2)
+      :k3 (k1-main3)
+      :k4 (k1-main4)
+      :k5 (k1-main5)
+      
       ;; ---[ google search ]--- ;;
       :google-1 (google-main :one)
       :google-2f (google-main :twof)

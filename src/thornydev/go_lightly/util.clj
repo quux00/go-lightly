@@ -1,4 +1,27 @@
-(ns thornydev.go-lightly.macros)
+(ns thornydev.go-lightly.util
+  (:import (java.util.concurrent SynchronousQueue)))
+
+(defn sync-channel [] (SynchronousQueue.))
+
+;; go: build own daemon thread pool
+(defn goda [func]
+  (doto (Thread. func) (.setDaemon true) (.start)))
+
+;; go: future cancel version (needs stop or shutdown)
+(def inventory (atom []))
+
+(defn go [func]
+  (let [fut (future (func))]
+    (swap! inventory conj fut)))
+
+(defn stop []
+  (doseq [f @inventory] (future-cancel f)))
+
+(defn shutdown []
+  (stop)
+  (shutdown-agents))
+
+
 
 (defmacro with-channel-open
   "bindings => [name init ...]
