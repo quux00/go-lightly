@@ -1,5 +1,6 @@
 (ns thornydev.go-lightly.core
   (:require [thornydev.go-lightly.boring :refer :all]
+            [thornydev.go-lightly.boring-task :refer [task-one]]
             [thornydev.go-lightly.google :refer :all]
             [thornydev.go-lightly.conc-prime-sieve :refer [sieve-main]])
   (:gen-class))
@@ -7,6 +8,8 @@
 (defn -main [& args]
   (doseq [arg args]
     (case (keyword (subs arg 1))
+      :task1 (task-one)
+      
       ;; ---[ simple Pike go examples ]--- ;;
       :one (one)
       :two (two)

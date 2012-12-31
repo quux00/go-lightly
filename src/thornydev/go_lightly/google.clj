@@ -133,6 +133,33 @@
                 (recur (- timeout (since start)) (conj responses @timed-chan)))))))))  
   )
 
+;; same as google-3, but this one uses read-channel* with a timeout param
+;; rather than the lamina with-timeout fn
+(defn google-3b [query]
+  (let [ch (channel)
+        qfirst (partial enqueue-first-take1 ch "clojure")
+        timeout 80]
+    ;; launch all the "go-routines" (futures)
+    (future (qfirst (fake-search "web1")   (fake-search "web2")))
+    (future (qfirst (fake-search "image1") (fake-search "image2")))
+    (future (qfirst (fake-search "video1") (fake-search "video2")))
+
+    ;; collect responses within a defined timeout window
+    (let [start (now)]
+      (loop [time-left timeout responses []]
+        (if (= 3 (count responses))
+          responses
+          (if (<= time-left 0)
+            (do (println "Timed out") responses)
+            (let [timed-res-chan (read-channel* ch :timeout time-left)]
+              (try
+                @timed-res-chan
+                (catch TimeoutException e (println "Timed out")))
+              (if (timed-out? timed-res-chan)
+                responses
+                (recur (- timeout (since start)) (conj responses @timed-res-chan)))))))))  
+  )
+
 (defn get-google-fn [version]
   (case version
     :one google-1
@@ -140,7 +167,8 @@
     :twoc google-20c
     :2.1 google-21
     :3-alpha google-3-alpha
-    :three google-3))
+    :three google-3
+    :3b google-3b))
 
 (defn google-main [version]
   (let [start (now)

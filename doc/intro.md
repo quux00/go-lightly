@@ -24,3 +24,41 @@
         Execution time std-deviation : 4.788948 ms
        Execution time lower quantile : 64.132246 ms ( 2.5%)
        Execution time upper quantile : 82.208824 ms (97.5%)
+
+
+## Notes on Lamina
+
+http://ideolalia.com/110624930
+
+### Notes from Tellman StrangeLoop prsentations
+* http://www.infoq.com/presentations/Event-Driven-Programming-in-Clojure
+* Tellman proposes handling async programming with an "event-driven data structure"
+* In a fork-join scenario, the join assumes the task will complete. This differs from Pike's go-concurrency examples
+* Threads are not free and we address that by creating Thread pools
+ * If I'm going to create my own daemon-future threads, to be robust it would need to use a Thread pool (or would it?)
+
+
+### Questions for Zach / Lamina Google group
+
+I'm new to lamina.  I've been reading about it and listened to Zach's StrangeLoop presentation and have a couple questions.
+
+First I realize that the primary use case for channels is an event queue, which likely means you want it to be unbounded and non-blocking. Thus, lamina uses a ConcurrentLinkedQueue underneath.
+
+But I've been playing with lamina as a tool to implement the concurrency constructs in Go (the language).
+
+* Is there a way to constrain the size of a channel, such that an attempt to enqueue a "full" channel will block?  I don't want to close the channel, I just want to constrain it's size - it can have values (events) moving through it, but cannot ever be large than size N.  This could be via the LinkedBlockingQueue, for example.  If no, is there another way to apply "backpressure" on the data/events coming into the channel?
+
+* Is there a way to use a ResultChannel as a queue of 1?  Or once it's realized it is "stuck" and cannot be used for anything besides reading that value (akin to a promise).
+==> NO, don't ask
+
+* There is a relatively undocumented `named-channel` fn - what is the value of a named channel?  What use case would it be good for? 
+
+* How is the broadcast-channel not an infinite loop?
+  * I get: StackOverflowError   java.util.concurrent.locks.ReentrantLock.unlock (ReentrantLock.java:460)
+
+* This piece of documentation is misleading:
+  * A single channel can be useful on its own, when used as an asynchronous variant of a LinkedBlockingQueue, but most of the time we don’t want to handle each message individually.
+  * From: https://github.com/ztellman/lamina/wiki/Channels-new
+
+
+* How does join work?  See diagram in the Tellman blog entry
