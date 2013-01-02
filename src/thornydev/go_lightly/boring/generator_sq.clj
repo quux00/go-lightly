@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.goboring-generator
+(ns thornydev.go-lightly.boring.generator-sq
   (:use thornydev.go-lightly.util))
 
 
@@ -6,18 +6,17 @@
 
 (defn- boring [msg]
   (let [ch (sync-channel)]
-    (go #(loop [i 0]
-           (.put ch (str msg " " i))
-           (Thread/sleep (rand-int 1000))
-           (recur (inc i))))
+    (go& (loop [i 0]
+          (.put ch (str msg " " i))
+          (Thread/sleep (rand-int 1000))
+          (recur (inc i))))
     ch))
 
 
 (defn single-generator []
   (let [ch (boring "boring!")]
     (dotimes [_ 5] (println "You say:" (.take ch))))
-  (println "You're boring: I'm leaving.")
-  (stop))
+  (println "You're boring: I'm leaving."))
 
 
 (defn multiple-generators []
@@ -27,4 +26,4 @@
       (println (.take joe))
       (println (.take ann))))
   (println "You're boring: I'm leaving.")
-  (stop))
+  )

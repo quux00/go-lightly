@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.boring-task
-  (:require [thornydev.go-lightly.macros :refer [with-channel-open]])
+  (:require [thornydev.go-lightly.util :refer [with-channel-open]])
   (:use [lamina.core]
         [lamina.executor]))
 

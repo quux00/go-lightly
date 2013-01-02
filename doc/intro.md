@@ -62,3 +62,31 @@ But I've been playing with lamina as a tool to implement the concurrency constru
 
 
 * How does join work?  See diagram in the Tellman blog entry
+  * See k1-main3 of kaychayev's "boring" examples
+  * (join ch1 ch2)  => ch2 will be the destination for messages to ch1
+  * All messages enq'd into ch1 will immediately be drained to ch2 =>
+  * it is basically the right way to do: (def ch2 (map* identity ch1))
+
+
+## Another thing to look into
+* http://docs.oracle.com/javase/1.5.0/docs/api/java/util/concurrent/ExecutorCompletionService.html
+** will this be useful to this endeavor?
+** from: http://stackoverflow.com/questions/11298961/equivalent-of-goroutines-in-clojure-java
+
+
+## Go channels
+http://golang.org/ref/spec
+
+Operations on go channels: send and receive
+
+## Go examples
+tinyurl.com/gochatroulette
+tinyurl.com/goloadbalancer
+tinyurl.com/gosieve
+tinyurl.com/gopowerseries
+
+
+
+## Racket equiv of Go select
+* https://cxwangyi.wordpress.com/2012/07/29/chinese-whispers-in-racket-and-go/
+* http://docs.racket-lang.org/reference/sync.html#(def._((quote._~23~25kernel)._sync))

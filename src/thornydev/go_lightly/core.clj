@@ -1,39 +1,58 @@
 (ns thornydev.go-lightly.core
-  (:require [thornydev.go-lightly.boring :refer :all]
-            [thornydev.go-lightly.kachayev1 :refer :all]
-            [thornydev.go-lightly.goboring-generator :as gen]
-            [thornydev.go-lightly.goboring-generator-lamina :as genlam]
-            [thornydev.go-lightly.google :refer :all]
-            [thornydev.go-lightly.conc-prime-sieve :refer [sieve-main]])
+  (:require [thornydev.go-lightly.boring.boringv1 :as v1]
+            [thornydev.go-lightly.boring.generator-kachayev :as genk]
+            [thornydev.go-lightly.boring.generator-sq :as gensq]
+            [thornydev.go-lightly.boring.generator-tq :as gentq]
+            [thornydev.go-lightly.boring.generator-lamina :as genlam]
+            [thornydev.go-lightly.boring.multiplex-kachayev :as mk]
+            [thornydev.go-lightly.boring.multiplex-sq :as psq]
+            [thornydev.go-lightly.boring.multiplex-lamina :as plam]
+            [thornydev.go-lightly.boring.multiseq-sq :as ssq]
+            [thornydev.go-lightly.search.google :refer :all]
+            [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]])
   (:gen-class))
 
 (defn -main [& args]
   (doseq [arg args]
     (case (keyword (subs arg 1))
-      :gen1 (gen/single-generator)
-      :gen2 (gen/multiple-generators)
-      :gen1lam (genlam/single-generator)
-      :gen2lam (genlam/multiple-generators)
+      ;; ---[ boring-generators ]--- ;;
+      
+      :gen-tq1 (gentq/single-generator)
+      :gen-tq2 (gentq/multiple-generators)
+      :gen-amp (gentq/multiple-generators&)
+
+      :gen-sq1 (gensq/single-generator)
+      :gen-sq2 (gensq/multiple-generators)
+      :gen-lam1 (genlam/single-generator)
+      :gen-lam2 (genlam/multiple-generators)
+      
+      :plex-sq (psq/multiplex)
+      :plex-lam (plam/multiplex)
+
+      :seq-sq (ssq/multiseq)
+      
+      
+      ;; --- [ kaychayev's code ] --- ;;
+      :k11 (genk/k1-main1)
+      :k12 (genk/k1-main2)
+      :k13 (genk/k1-main3)
+      :k14 (genk/k1-main4)
+      :k15 (genk/k1-main5)
+      :k21 (mk/k2-multiplex-any)
+      :k22 (mk/k2-multiplex-join)
       
       ;; ---[ simple Pike go examples ]--- ;;
-      :one (one)
-      :two (two)
-      :three (three)
-      :four (four)
-      :five (five)
-      :six (six-two-separate-channels)
-      :seven (seven-fan-in)
-      :eight (eight-wait-channel)
-      :nine (nine-two-wait-channels)
-      :ten (ten-forked-wait-channel)
+      :one (v1/one)
+      :two (v1/two)
+      :three (v1/three)
+      :four (v1/four)
+      :five (v1/five)
+      :six (v1/six-two-separate-channels)
+      :seven (v1/seven-fan-in)
+      :eight (v1/eight-wait-channel)
+      :nine (v1/nine-two-wait-channels)
+      :ten (v1/ten-forked-wait-channel)
 
-      ;; --- [ kaychayev's code ] --- ;;
-      :k1 (k1-main1)
-      :k2 (k1-main2)
-      :k3 (k1-main3)
-      :k4 (k1-main4)
-      :k5 (k1-main5)
-      
       ;; ---[ google search ]--- ;;
       :google-1 (google-main :one)
       :google-2f (google-main :twof)

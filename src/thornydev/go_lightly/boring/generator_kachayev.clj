@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.kachayev1
+(ns thornydev.go-lightly.boring.generator-kachayev
   (:use lamina.core))
 ;; Channels-driven concurrency with Clojure
 ;; Clojure variant for code examples from this gist:
@@ -65,7 +65,8 @@
       (doseq [ch [joe ann]]
         ;; TODO: Fix checking for channel closing (this is wrong way)
         (when-not (closed? ch) (println @(read-channel ch))))
-      (recur))))
+      (recur)))
+  )
 
 (defn k1-main5 []
   ;; Read from one channel, than - from second
