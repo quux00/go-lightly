@@ -30,7 +30,7 @@
 
 http://ideolalia.com/110624930
 
-### Notes from Tellman StrangeLoop prsentations
+### Notes from Tellman StrangeLoop presentations
 * http://www.infoq.com/presentations/Event-Driven-Programming-in-Clojure
 * Tellman proposes handling async programming with an "event-driven data structure"
 * In a fork-join scenario, the join assumes the task will complete. This differs from Pike's go-concurrency examples
@@ -70,8 +70,9 @@ But I've been playing with lamina as a tool to implement the concurrency constru
 
 ## Another thing to look into
 * http://docs.oracle.com/javase/1.5.0/docs/api/java/util/concurrent/ExecutorCompletionService.html
-** will this be useful to this endeavor?
-** from: http://stackoverflow.com/questions/11298961/equivalent-of-goroutines-in-clojure-java
+ * recommended here: http://stackoverflow.com/questions/11298961/equivalent-of-goroutines-in-clojure-java
+ * will this be useful to this endeavor?
+  * Reviewed: The ExecutorCompletionServer is will help you get the next available result from a pool of Futures, but it cannot be a general purpose Go channel, bcs it can only return one result per future - it is constrained by the mechanics of how a future works
 
 
 ## Go channels
