@@ -98,10 +98,17 @@
 
 ;; public select fns
 
-(defn select [& channels]
+(defn select
+  "Select one message from the channels passed in."
+  [& channels]
   (doselect channels nil))
 
-(defn select-timeout [timeout & channels]
+(defn select-timeout
+  "Like select, selects one message from the channels passed in
+   with the same behavior except that a timeout is in place that
+   if no message becomes available before the timeout expires, a
+   :go-lightly/timeout sentinel message will be returned."
+  [timeout & channels]
   (doselect channels timeout))
 
 
@@ -110,7 +117,7 @@
 (defn- test-routine [c n]
   (dotimes [_ 5]
     (let [value (rand-int 6000)]
-      (Thread/sleep (rand-int 666))
+      (Thread/sleep (rand-int 700))
       (print (str "Putting " value " on chan " n "\n")) (flush)
       (.transfer c value))))
 

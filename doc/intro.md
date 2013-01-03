@@ -91,3 +91,13 @@ tinyurl.com/gopowerseries
 ## Racket equiv of Go select
 * https://cxwangyi.wordpress.com/2012/07/29/chinese-whispers-in-racket-and-go/
 * http://docs.racket-lang.org/reference/sync.html#(def._((quote._~23~25kernel)._sync))
+
+
+## Notes for blog entries
+
+In the first blog entry, I introduced some simple examples of the CSP (Communicating Sequential Processes) model of concurrency that have been built into the Go language. In this blog series, I'm cataloging my investigation of how we might leverage this style of concurrent programming in Clojure.
+
+The key benefit of the CSP approach is that you can use sequential semantics of non-current programs to simplify dealing with concurrency.  Channels are used to communicate and synchronize processes to bring some control or determinism to an otherwise non-deterministic concurrent environment.  We can do this without locks or other low-level constructs that are hard to reason about.  The CSP is built on top of those low-level primitives (or at least compare-and-swap mechanisms), but they are hidden from view from the application developer.
+
+
+
