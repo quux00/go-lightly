@@ -1,10 +1,7 @@
 (ns thornydev.go-lightly.core
   (:import (java.util.concurrent LinkedTransferQueue TimeUnit)))
 
-;; producers should use .transfer
-;; consumers should use .peek (check if anything on the queue)
-;; and .take or .poll
-(defn go-channel [] (LinkedTransferQueue.))
+;; go routines
 
 (def inventory (atom []))
 
@@ -42,6 +39,21 @@
    all non-daemon threads cease or when you stop it some ad-hoc way."
   [& body]
   `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
+
+
+;; channels
+
+(defn go-channel [] (LinkedTransferQueue.))
+
+(defn timeout-channel
+  "Create a channel that after the specified duration (in
+   millis) will have the :go-lightly/timeout sentinel value"
+  [duration]
+  (let [ch (go-channel)]
+    (go& (do (Thread/sleep duration)
+             (.put ch :go-lightly/timeout)))
+    ch))
+
 
 
 ;; copied and modified from with-open from clojure.core
@@ -82,6 +94,12 @@
       (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
       (Thread/sleep 0 500))))
 
+;; TODO: if any of these channels are timeout channels, they
+;; need to be read preferentially, so we would need to add
+;; some polymorphism or flags to detect which are timeout
+;; channels => can do this by creating our own protocols for
+;; the go-channel and have a defrecord type of TimerChannel
+;; vs. regular GoChannel
 (defn- probe-til-ready [channels timeout]
   (let [start (now)]
     (loop [chans channels ready-chan nil]

@@ -1,6 +1,5 @@
 (ns thornydev.go-lightly.examples.boring.select-basic
-  (:require [thornydev.go-lightly.core :as go])
-  (:use lamina.core))
+  (:require [thornydev.go-lightly.core :as go]))
 
 (defn- boring [msg]
   (let [ch (go/go-channel)]
@@ -10,13 +9,38 @@
              (recur (inc i))))
     ch))
 
-(defn select-basic []
+;; simple example using go/select to choose
+;; the next available message - repeat 5 times
+(defn select-between-Joe-and-Ann []
+  (let [joe-ch (boring "Joe")
+        ann-ch (boring "Ann")]
+    (dotimes [_ 5]
+      (let [msg (go/select joe-ch ann-ch)]
+        (println msg))))
+  (go/stop))
+
+
+;; use select-timeout to specify a "per round" timeout of 1 sec, 
+;; *not* a timeout for the cyclic operation as a whole
+(defn select-timeout-per-round []
   (let [ch (boring "Joe")]
     (loop []
-      ;; this specifies a "per round" timeout of 1 sec, 
-      ;; *not* a timeout for the cyclic operation as a whole
       (let [msg (go/select-timeout 750 ch)]
         (if (= msg :go-lightly/timeout)
           (println "You're too slow.")
           (do (println msg)
-              (recur)))))))
+              (recur))))))
+  (go/stop))
+
+;; use a timeout-channel to constrain the conversation
+;; to a max of 2500 milliseconds (plus some slop time)
+(defn select-timeout-whole-conversation []
+  (let [joe-ch (boring "Joe")
+        timed-ch (go/timeout-channel 2500)]
+    (loop []
+      (let [msg (go/select joe-ch timed-ch)]
+        (if (= msg :go-lightly/timeout)
+          (println "You talk too much!")
+          (do (println msg)
+              (recur))))))
+  (go/stop))

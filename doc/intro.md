@@ -99,5 +99,6 @@ In the first blog entry, I introduced some simple examples of the CSP (Communica
 
 The key benefit of the CSP approach is that you can use sequential semantics of non-current programs to simplify dealing with concurrency.  Channels are used to communicate and synchronize processes to bring some control or determinism to an otherwise non-deterministic concurrent environment.  We can do this without locks or other low-level constructs that are hard to reason about.  The CSP is built on top of those low-level primitives (or at least compare-and-swap mechanisms), but they are hidden from view from the application developer.
 
-
+Clojure select example:
+<script src="https://gist.github.com/4448219.js"></script>
 
