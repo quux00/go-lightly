@@ -1,5 +1,5 @@
-(ns thornydev.go-lightly.search.google
-  (:require [thornydev.go-lightly.util :refer [with-channel-open]])
+(ns thornydev.go-lightly.examples.search.google
+  (:require [thornydev.go-lightly.core :refer [with-channel-open]])
   (:use lamina.core)
   (:import (java.util.concurrent TimeoutException)))
 

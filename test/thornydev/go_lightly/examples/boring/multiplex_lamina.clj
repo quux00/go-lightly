@@ -1,5 +1,5 @@
-(ns thornydev.go-lightly.boring.multiplex-lamina
-  (:use [thornydev.go-lightly.util]
+(ns thornydev.go-lightly.examples.boring.multiplex-lamina
+  (:use [thornydev.go-lightly.core]
         [lamina.core]))
 
 (defn- boring [msg]

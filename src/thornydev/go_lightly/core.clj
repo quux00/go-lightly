@@ -1,78 +1,124 @@
 (ns thornydev.go-lightly.core
-  (:require [thornydev.go-lightly.boring.boringv1 :as v1]
-            [thornydev.go-lightly.boring.generator-kachayev :as genk]
-            [thornydev.go-lightly.boring.generator-sq :as gensq]
-            [thornydev.go-lightly.boring.generator-tq :as gentq]
-            [thornydev.go-lightly.boring.generator-lamina :as genlam]
-            [thornydev.go-lightly.boring.multiplex-kachayev :as mk]
-            [thornydev.go-lightly.boring.multiplex-sq :as psq]
-            [thornydev.go-lightly.boring.multiplex-lamina :as plam]
-            [thornydev.go-lightly.boring.multiseq-sq :as ssq]
-            [thornydev.go-lightly.search.google :refer :all]
-            [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]]
-            [thornydev.go-lightly.util])
-  (:gen-class))
+  (:import (java.util.concurrent LinkedTransferQueue TimeUnit)))
 
-(defn -main [& args]
-  (doseq [arg args]
-    (case (keyword (subs arg 1))
-      ;; ---[ boring-generators ]--- ;;
-      
-      :gen-tq1 (gentq/single-generator)
-      :gen-tq2 (gentq/multiple-generators)
-      :gen-amp (gentq/multiple-generators&)
+;; producers should use .transfer
+;; consumers should use .peek (check if anything on the queue)
+;; and .take or .poll
+(defn go-channel [] (LinkedTransferQueue.))
 
-      :gen-sq1 (gensq/single-generator)
-      :gen-sq2 (gensq/multiple-generators)
-      :gen-lam1 (genlam/single-generator)
-      :gen-lam2 (genlam/multiple-generators)
-      
-      :plex-sq (psq/multiplex)
-      :plex-lam (plam/multiplex)
+(def inventory (atom []))
 
-      :seq-sq (ssq/multiseq)
-      
-      
-      ;; --- [ kaychayev's code ] --- ;;
-      :k11 (genk/k1-main1)
-      :k12 (genk/k1-main2)
-      :k13 (genk/k1-main3)
-      :k14 (genk/k1-main4)
-      :k15 (genk/k1-main5)
-      :k21 (mk/k2-multiplex-any)
-      :k22 (mk/k2-multiplex-join)
-      
-      ;; ---[ simple Pike go examples ]--- ;;
-      :one (v1/one)
-      :two (v1/two)
-      :three (v1/three)
-      :four (v1/four)
-      :five (v1/five)
-      :six (v1/six-two-separate-channels)
-      :seven (v1/seven-fan-in)
-      :eight (v1/eight-wait-channel)
-      :nine (v1/nine-two-wait-channels)
-      :ten (v1/ten-forked-wait-channel)
+(defmacro go
+  "Launches a Clojure future as a 'go-routine' and returns the future.
+   It is not necessary to keep a reference to this future, however.
+   Instead, you can call the accompanying stop function to
+   shutdown (cancel) all futures created by this function."
+  [& body]
+  `(let [fut# (future ~@body)]
+     (swap! inventory conj fut#)
+     fut#))
 
-      ;; ---[ google search ]--- ;;
-      :google-1 (google-main :one)
-      :google-2f (google-main :twof)
-      :google-2c (google-main :twoc)
-      :google-2.1 (google-main :2.1)
-      :google-3-alpha (google-main :3-alpha)
-      :google-3 (google-main :three)
+(defn stop
+  "Stop (cancel) all futures started via the go macro."
+  []
+  (doseq [f @inventory] (future-cancel f)))
 
-      ;; ---[ concurrency prime sieve ]--- ;;
-      :primes (sieve-main)
-      :testy (thornydev.go-lightly.util/testy)
-      
-      ;; CPU usages is about 4.5% when sleeps are set between
-      ;; 10 microseconds up to (and including) 1 millisecond
-      ;; 5 millis uses about 1% CPU
-      ;; 10 millis uses about 0.7% CPU
-      :sleep (do (println "starting")
-                 (dotimes [i 14500] (Thread/sleep 0 10000)))
-
-      (println "WARN: argument not recognized"))
-    (println "------------------"))
+(defn shutdown []
+  "Stop (cancel) all futures started via the go macro and
+   then call shutdown-agents to close down the entire Clojure
+   agent/future thread pool."
+  (stop)
   (shutdown-agents))
+
+
+(defmacro go&
+  "Launch a 'go-routine' like deamon Thread to execute the body. 
+   This macro does not yield a future so it cannot be dereferenced.
+   Instead it returns the Java Thread itself.
+
+   It is intended to be used with go-channels for communication
+   between threads.  This thread is not part of a managed Thread 
+   pool so cannot be directly shutdown.  It will stop either when 
+   all non-daemon threads cease or when you stop it some ad-hoc way."
+  [& body]
+  `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
+
+
+;; copied and modified from with-open from clojure.core
+(defmacro with-channel-open
+  "bindings => [name init ...]
+
+  Evaluates body in a try expression with names bound to the values
+  of the inits, and a finally clause that calls (close name) on each
+  name in reverse order."
+  [bindings & body]
+  (assert (vector? bindings) "a vector for its binding")
+  (assert (even? (count bindings)) "an even number of forms in binding vector")
+  (cond
+    (= (count bindings) 0) `(do ~@body)
+    (symbol? (bindings 0)) `(let ~(subvec bindings 0 2)
+                              (try
+                                (with-channel-open ~(subvec bindings 2) ~@body)
+                                (finally
+                                  (~'close ~(bindings 0)))))
+    :else (throw (IllegalArgumentException.
+                   "with-open only allows Symbols in bindings"))))
+
+
+;; ---[ select and helper fns ]--- ;;
+
+(defn- now [] (System/currentTimeMillis))
+
+(defn- timed-out? [start duration]
+  (when duration
+    (> (now) (+ start duration))))
+
+(defn- choose [ready-chans]
+  (.take (nth ready-chans (rand-int (count ready-chans)))))
+
+(defn- peek-channels [channels]
+  (let [ready (doall (keep #(when-not (nil? (.peek %)) %) channels))]
+    (if (seq ready)
+      (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
+      (Thread/sleep 0 500))))
+
+(defn- probe-til-ready [channels timeout]
+  (let [start (now)]
+    (loop [chans channels ready-chan nil]
+      (cond
+       ready-chan (.take ready-chan)
+       (timed-out? start timeout) :go-lightly/timeout
+       :else (recur channels (peek-channels channels))))))
+
+(defn- doselect [channels timeout]
+  (let [ready (doall (filterv #(not (nil? (.peek %))) channels))]
+    (if (seq ready)
+      (choose ready)
+      (probe-til-ready channels timeout))))
+
+;; public select fns
+
+(defn select [& channels]
+  (doselect channels nil))
+
+(defn select-timeout [timeout & channels]
+  (doselect channels timeout))
+
+
+;;; testing - remove later
+
+(defn- test-routine [c n]
+  (dotimes [_ 5]
+    (let [value (rand-int 6000)]
+      (Thread/sleep (rand-int 666))
+      (print (str "Putting " value " on chan " n "\n")) (flush)
+      (.transfer c value))))
+
+(defn testy [timeout]
+  (let [ch1 (go-channel)  ch2 (go-channel)]
+    (go& (test-routine ch1 1))
+    ;; (go& (test-routine ch2 2))
+    (dotimes [i 5]
+      (Thread/sleep 250)
+      (print (str ">>" (select-timeout timeout ch1 ch2) "<<\n"))
+      (flush))))

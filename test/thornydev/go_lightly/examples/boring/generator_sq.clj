@@ -1,11 +1,12 @@
-(ns thornydev.go-lightly.boring.generator-sq
-  (:use thornydev.go-lightly.util))
+(ns thornydev.go-lightly.examples.boring.generator-sq
+  (:require [thornydev.go-lightly.core :refer :all])
+  (:import (java.util.concurrent SynchronousQueue)))
 
 
 ;; ---[ Use a "sync-channel": Java SynchronousQueue ]--- ;;
 
 (defn- boring [msg]
-  (let [ch (sync-channel)]
+  (let [ch (SynchronousQueue.)]
     (go& (loop [i 0]
           (.put ch (str msg " " i))
           (Thread/sleep (rand-int 1000))

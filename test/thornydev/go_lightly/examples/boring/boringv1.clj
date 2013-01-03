@@ -1,5 +1,5 @@
-(ns thornydev.go-lightly.boring.boringv1
-  (:require [thornydev.go-lightly.util :refer [with-channel-open]])
+(ns thornydev.go-lightly.examples.boring.boringv1
+  (:require [thornydev.go-lightly.core :refer [with-channel-open]])
   (:use lamina.core))
 
 ;; --- [ one ]--- ;;

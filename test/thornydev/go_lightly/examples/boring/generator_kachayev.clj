@@ -1,5 +1,6 @@
-(ns thornydev.go-lightly.boring.generator-kachayev
+(ns thornydev.go-lightly.examples.boring.generator-kachayev
   (:use lamina.core))
+
 ;; Channels-driven concurrency with Clojure
 ;; Clojure variant for code examples from this gist:
 ;; https://gist.github.com/3124594

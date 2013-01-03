@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.primes.conc-prime-sieve
+(ns thornydev.go-lightly.examples.primes.conc-prime-sieve
   (:import (java.util.concurrent SynchronousQueue)))
 
 ;; A Clojure implementation of the Concurrent Primary Sieve

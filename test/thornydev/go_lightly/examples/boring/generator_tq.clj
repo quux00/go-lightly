@@ -1,5 +1,5 @@
-(ns thornydev.go-lightly.boring.generator-tq
-  (:require [thornydev.go-lightly.util :refer :all]))
+(ns thornydev.go-lightly.examples.boring.generator-tq
+  (:require [thornydev.go-lightly.core :refer :all]))
 
 ;; ---[ Use the go macro that requires a stop ]--- ;;
 

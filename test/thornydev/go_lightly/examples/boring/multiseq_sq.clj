@@ -1,9 +1,10 @@
-(ns thornydev.go-lightly.boring.multiseq-tq
-  (:require [thornydev.go-lightly.util :refer :all]))
+(ns thornydev.go-lightly.examples.boring.multiseq-sq
+  (:require [thornydev.go-lightly.core :refer :all])
+  (:import java.util.concurrent.SynchronousQueue))
 
 (defn- boring [msg]
-  (let [wait-ch (go-channel)
-        ch      (go-channel)]
+  (let [wait-ch (SynchronousQueue.)
+        ch      (SynchronousQueue.)]
     (go (loop [i 0]
           (.put ch {:str (str msg " " i)
                     :wait wait-ch})
@@ -13,11 +14,11 @@
     ch))
 
 (defn- fan-in [in-chan1 in-chan2]
-  (let [ch (go-channel)]
+  (let [ch (SynchronousQueue.)]
     (doseq [inchan [in-chan1 in-chan2]]
       (go (loop []
-            (.put ch (.take inchan))
-            (recur))))
+             (.put ch (.take inchan))
+             (recur))))
     ch))
 
 
