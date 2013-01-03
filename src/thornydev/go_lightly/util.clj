@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.util
-  (:import (java.util.concurrent SynchronousQueue LinkedTransferQueue)))
+  (:import (java.util.concurrent SynchronousQueue LinkedTransferQueue TimeUnit)))
 
 ;; producers should use .transfer
 ;; consumers should use .peek (check if anything on the queue)
@@ -66,3 +66,71 @@
                                   (~'close ~(bindings 0)))))
     :else (throw (IllegalArgumentException.
                    "with-open only allows Symbols in bindings"))))
+
+
+
+(defn- choose [ready-chans]
+  (.take (nth ready-chans (rand-int (count ready-chans)))))
+
+(defn- peek-channels [channels]
+  (let [ready (doall (keep #(when-not (nil? (.peek %)) %) channels))]
+    (if (seq ready)
+      (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
+      (Thread/sleep 0 500))))
+
+(defn- probe-til-ready [channels]
+  (loop [chans channels ready-chan nil]
+    (if ready-chan
+      (.take ready-chan)
+      (recur channels (peek-channels channels)))))
+
+
+
+(defn- poll-channels [channels]
+  (loop [chans channels]
+    (when (seq chans)
+      (if-let [value (.poll (first chans) 10 TimeUnit/MICROSECONDS)]
+        value
+        (recur (rest chans))))))
+
+(defn- poll-til-ready [channels]
+  (loop []
+    (if-let [msg (poll-channels channels)]
+      msg
+      (recur))))
+
+
+
+(defn select [& channels]
+  (let [ready (doall (filterv #(not (nil? (.peek %))) channels))]
+    (if (seq ready)
+      (choose ready)
+      (probe-til-ready channels)
+      ;; (poll-til-ready channels)
+      )
+    )
+  )
+
+
+;;; testing - remove later
+
+(defn- test-routine [& chans]
+  (doseq [c (shuffle chans)]
+    (Thread/sleep (rand-int 3300))
+    (let [value (rand-int 6000)]
+      (println "Putting " value "on chan") (flush)
+      (.transfer c value))))
+
+(defn testy []
+  (let [ch1 (go-channel)  ch2 (go-channel)]
+    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 ch2))
+    (dotimes [i 5]
+      (println (select ch1 ch2))
+      (flush))
+    )
+  )

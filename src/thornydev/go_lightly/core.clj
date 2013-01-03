@@ -63,7 +63,14 @@
 
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)
-      
+
+      ;; CPU usages is about 4.5% when sleeps are set between
+      ;; 10 microseconds up to (and including) 1 millisecond
+      ;; 5 millis uses about 1% CPU
+      ;; 10 millis uses about 0.7% CPU
+      :sleep (do (println "starting")
+                 (dotimes [i 14500] (Thread/sleep 0 10000)))
+
       (println "WARN: argument not recognized"))
     (println "------------------"))
   (shutdown-agents))
