@@ -9,7 +9,8 @@
             [thornydev.go-lightly.boring.multiplex-lamina :as plam]
             [thornydev.go-lightly.boring.multiseq-sq :as ssq]
             [thornydev.go-lightly.search.google :refer :all]
-            [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]])
+            [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]]
+            [thornydev.go-lightly.util])
   (:gen-class))
 
 (defn -main [& args]
@@ -63,7 +64,8 @@
 
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)
-
+      :testy (thornydev.go-lightly.util/testy)
+      
       ;; CPU usages is about 4.5% when sleeps are set between
       ;; 10 microseconds up to (and including) 1 millisecond
       ;; 5 millis uses about 1% CPU

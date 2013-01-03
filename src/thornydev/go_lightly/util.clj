@@ -114,23 +114,19 @@
 
 ;;; testing - remove later
 
-(defn- test-routine [& chans]
-  (doseq [c (shuffle chans)]
-    (Thread/sleep (rand-int 3300))
+(defn- test-routine [c n]
+  (dotimes [_ 5]
     (let [value (rand-int 6000)]
-      (println "Putting " value "on chan") (flush)
+      (print (str "Putting " value " on chan " n "\n")) (flush)
       (.transfer c value))))
 
 (defn testy []
   (let [ch1 (go-channel)  ch2 (go-channel)]
-    (go& (test-routine ch1 ch2))
-    (go& (test-routine ch1 ch2))
-    (go& (test-routine ch1 ch2))
-    (go& (test-routine ch1 ch2))
-    (go& (test-routine ch1 ch2))
-    (go& (test-routine ch1 ch2))
+    (go& (test-routine ch1 1))
+    (go& (test-routine ch2 2))
     (dotimes [i 5]
-      (println (select ch1 ch2))
+      (Thread/sleep 1544)
+      (print (str ">>" (select ch1 ch2) "<<\n"))
       (flush))
     )
   )
