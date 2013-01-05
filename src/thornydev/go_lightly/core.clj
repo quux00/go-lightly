@@ -1,5 +1,6 @@
 (ns thornydev.go-lightly.core
-  (:import (java.util.concurrent LinkedTransferQueue)))
+  (:import (java.util.concurrent LinkedTransferQueue TimeUnit
+                                 TimeoutException)))
 
 ;; ---[ go routines ]--- ;;
 
@@ -155,4 +156,20 @@
     (if (and (nil? result) (seq? sentinel))
       (first sentinel)
       result)))
+
+
+
+;; ---[ helper macros ]--- ;;
+
+;; Credit to mikera
+;; from: http://stackoverflow.com/a/6697469/871012
+(defmacro with-timeout [millis & body]
+  `(let [fut# (future ~@body)]
+     (try
+       (.get fut# ~millis TimeUnit/MILLISECONDS)
+       (catch TimeoutException x# 
+         (do
+           (future-cancel fut#)
+           nil)))))
+
 

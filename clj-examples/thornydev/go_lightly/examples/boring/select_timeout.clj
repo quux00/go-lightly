@@ -34,13 +34,25 @@
 
 ;; use a timeout-channel to constrain the conversation
 ;; to a max of 2500 milliseconds (plus some slop time)
-(defn select-timeout-whole-conversation []
+(defn select-timeout-whole-conversation-v1 []
   (let [joe-ch (boring "Joe")
-        timed-ch (go/timeout-channel 2500)]
+        ann-ch (boring "Ann")
+        timed-ch (go/timeout-channel 2000)]
     (loop []
-      (let [msg (go/select joe-ch timed-ch)]
+      (let [msg (go/select joe-ch ann-ch timed-ch)]
         (if (= msg :go-lightly/timeout)
           (println "You talk too much!")
           (do (println msg)
               (recur))))))
+  (go/stop))
+
+
+(defn select-timeout-whole-conversation-v2 []
+  (let [joe-ch (boring "Joe")
+        ann-ch (boring "Ann")]
+    (go/with-timeout 2000
+      (loop []
+        (println (go/select joe-ch ann-ch))
+        (recur))
+      (println "You talk too much!")))
   (go/stop))

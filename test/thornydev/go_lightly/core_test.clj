@@ -2,6 +2,8 @@
   (:use clojure.test
         thornydev.go-lightly.core))
 
+(declare test-routine test-routine-track-enqueues)
+
 (deftest test-go&
   (testing "go& routines"
     (let [ch1 (go-channel) ch2 (go-channel)]
@@ -30,15 +32,21 @@
       (.put ch :b)
       (is (= :a (.take ch)))
       (is (= :b (.take ch)))
-      (is (= :go-lightly/timeout (.take ch))))))
+      (is (= :go-lightly/timeout (.take ch)))))
 
-
-(defn- test-routine-track-enqueues [ch qlog]
-  (loop [value (rand-int 6000)]
-    (Thread/sleep (rand-int 100))
-    (.transfer ch value)
-    (swap! qlog conj value)
-    (recur (rand-int 6000))))
+  (testing "timeout channel with other channels"
+    (let [ch1 (go-channel)
+          ch2 (go-channel)
+          tch (timeout-channel 250)
+          fnext-msg (partial select ch1 ch2 tch)]
+      ;; this basically tests that it ends => not an infinite loop
+      (go (test-routine ch1 1))
+      (go (test-routine ch1 2))
+      (loop [msg (fnext-msg)]
+        (when-not (= msg :go-lightly/timeout)
+          (is (some #{1 2} [msg]))
+          (recur (fnext-msg)))))
+    (stop)))
 
 
 (deftest test-select
@@ -55,11 +63,6 @@
       (is (= (set results) @qlog)))   
     (stop))
   )
-
-(defn- test-routine [ch n]
-  (dotimes [_ 50]
-    (Thread/sleep (rand-int 500))
-    (.transfer ch n)))
 
 (deftest test-select-timeout
   (let [ch1 (go-channel)  ch2 (go-channel)
@@ -95,4 +98,22 @@
       (is (> (count results) 1)))))
 
 
-;; (println (run-tests 'thornydev.go-lightly.core-test))
+(println (run-tests 'thornydev.go-lightly.core-test))
+
+;; ---[ helper fns ]--- ;;
+
+(defn- test-routine [ch n]
+  (dotimes [_ 50]
+    (Thread/sleep (rand-int 500))
+    (.transfer ch n)))
+
+
+(defn- test-routine-track-enqueues [ch qlog]
+  (loop [value (rand-int 6000)]
+    (Thread/sleep (rand-int 100))
+    (.transfer ch value)
+    (swap! qlog conj value)
+    (recur (rand-int 6000))))
+
+
+
