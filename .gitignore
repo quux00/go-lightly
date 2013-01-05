@@ -9,3 +9,7 @@ pom.xml
 .lein-failures
 .lein-plugins
 *.mp4
+go-examples/src/boring-generators/boring-generators
+go-examples/src/boring-multiplexing/boring-multiplexing
+go-examples/src/boring-multiseq/boring-multiseq
+go-examples/src/boring-select/boring-select
