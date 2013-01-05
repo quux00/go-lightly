@@ -68,12 +68,17 @@ But I've been playing with lamina as a tool to implement the concurrency constru
   * it is basically the right way to do: (def ch2 (map* identity ch1))
 
 
-## Another thing to look into
+## Ideas
+### Another thing to look into
 * http://docs.oracle.com/javase/1.5.0/docs/api/java/util/concurrent/ExecutorCompletionService.html
  * recommended here: http://stackoverflow.com/questions/11298961/equivalent-of-goroutines-in-clojure-java
  * will this be useful to this endeavor?
   * Reviewed: The ExecutorCompletionServer is will help you get the next available result from a pool of Futures, but it cannot be a general purpose Go channel, bcs it can only return one result per future - it is constrained by the mechanics of how a future works
-
+### useing channels or selects on channels in HOFs like map, reduce, filter, etc.
+ * (channel->lazyseq ch)
+ * (map inc (channels->lazyseq ch1 ch2 ch3)  (does a select each iteration)
+ * (lazy-select ch1 ch2 ch3)  ;; what is the end point? closed channel? or allow infinite seqs?
+ * 
 
 ## Go channels
 http://golang.org/ref/spec
