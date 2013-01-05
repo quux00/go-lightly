@@ -102,3 +102,8 @@ The key benefit of the CSP approach is that you can use sequential semantics of 
 Clojure select example:
 <script src="https://gist.github.com/4448219.js"></script>
 
+
+
+
+## Go talks
+* Google IO 2010 talk (Load Balancer example): https://www.youtube.com/watch?v=jgVhBThJdXc

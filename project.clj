@@ -6,4 +6,5 @@
   :profiles {:dev {:dependencies [[criterium "0.3.1"]]}}
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [lamina "0.5.0-beta8"]]
+  :source-paths ["src" "clj-examples"]
   :main thornydev.go-lightly.examples.run-examples)

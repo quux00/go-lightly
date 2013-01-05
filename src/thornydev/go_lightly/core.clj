@@ -1,7 +1,7 @@
 (ns thornydev.go-lightly.core
-  (:import (java.util.concurrent LinkedTransferQueue TimeUnit)))
+  (:import (java.util.concurrent LinkedTransferQueue)))
 
-;; go routines
+;; ---[ go routines ]--- ;;
 
 (def inventory (atom []))
 
@@ -16,9 +16,16 @@
      fut#))
 
 (defn stop
-  "Stop (cancel) all futures started via the go macro."
+  "Stop (cancel) all futures started via the go macro.
+   This should only be called when you are finished with
+   all go routines running in your app, ideally at the end
+   of the program.  It can be reused on a new set of go
+   routines, as long as they were started after this stop
+   fn returned, as it clears an cached of remembered go
+   routines that could be subject to a race condition."
   []
-  (doseq [f @inventory] (future-cancel f)))
+  (doseq [f @inventory] (future-cancel f))
+  (reset! inventory []))
 
 (defn shutdown []
   "Stop (cancel) all futures started via the go macro and
@@ -41,9 +48,11 @@
   `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
 
 
-;; channels
+;; ---[ channels and channel fn ]--- ;;
 
-(defn go-channel [] (LinkedTransferQueue.))
+(defn go-channel
+  "Returns a LinkedTransferQueue as a go-channel"
+  [] (LinkedTransferQueue.))
 
 (defn timeout-channel
   "Create a channel that after the specified duration (in
@@ -55,7 +64,7 @@
     ch))
 
 
-
+;; right now this is for use only with the lamina channels which can be closed
 ;; copied and modified from with-open from clojure.core
 (defmacro with-channel-open
   "bindings => [name init ...]
@@ -108,18 +117,24 @@
        (timed-out? start timeout) :go-lightly/timeout
        :else (recur channels (peek-channels channels))))))
 
-(defn- doselect [channels timeout]
+(defn- doselect [channels timeout nowait]
   (let [ready (doall (filterv #(not (nil? (.peek %))) channels))]
     (if (seq ready)
       (choose ready)
-      (probe-til-ready channels timeout))))
+      (when-not nowait
+        (probe-til-ready channels timeout)))))
+
+(defn- parse-nowait-args [channels]
+  (if (keyword? (last channels))
+    (split-at (dec (count channels)) channels)
+    [channels nil]))
 
 ;; public select fns
 
 (defn select
   "Select one message from the channels passed in."
   [& channels]
-  (doselect channels nil))
+  (doselect channels nil nil))
 
 (defn select-timeout
   "Like select, selects one message from the channels passed in
@@ -127,23 +142,17 @@
    if no message becomes available before the timeout expires, a
    :go-lightly/timeout sentinel message will be returned."
   [timeout & channels]
-  (doselect channels timeout))
+  (doselect channels timeout nil))
 
+(defn select-nowait
+  [& channels]
+  "Like select, selects one message from the channels passed in
+   with the same behavior except that if no channel has a message
+   ready, it immediately returns nil or the sentinel keyword value
+   passed in as the last argument."
+  (let [[chans sentinel] (parse-nowait-args channels)
+        result (doselect chans nil :nowait)]
+    (if (and (nil? result) (seq? sentinel))
+      (first sentinel)
+      result)))
 
-;;; testing - remove later
-
-(defn- test-routine [c n]
-  (dotimes [_ 5]
-    (let [value (rand-int 6000)]
-      (Thread/sleep (rand-int 700))
-      (print (str "Putting " value " on chan " n "\n")) (flush)
-      (.transfer c value))))
-
-(defn testy [timeout]
-  (let [ch1 (go-channel)  ch2 (go-channel)]
-    (go& (test-routine ch1 1))
-    ;; (go& (test-routine ch2 2))
-    (dotimes [i 5]
-      (Thread/sleep 250)
-      (print (str ">>" (select-timeout timeout ch1 ch2) "<<\n"))
-      (flush))))
