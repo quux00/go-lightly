@@ -24,13 +24,13 @@
     (recur (.take cin))))
 
 (defn sieve-main [& args]
-  (let [chfirst (go/go-channel)]
+  (let [chfirst (go/channel)]
     (go/go (generate chfirst))
     (loop [i 10 ch chfirst]
       (when (pos? i)
         (let [prime (.take ch)
-              ch1 (go/go-channel)]
+              ch1 (go/channel)]
           (println prime)
           (go/go (filter-primes ch ch1 prime))
           (recur (dec i) ch1)))))
-  (go/shutdown))
+  (go/stop))

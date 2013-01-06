@@ -6,7 +6,7 @@
 
 (deftest test-go&
   (testing "go& routines"
-    (let [ch1 (go-channel) ch2 (go-channel)]
+    (let [ch1 (channel) ch2 (channel)]
       (go& (.transfer ch1 1))
       (go& (.transfer ch2 2))
       (is (= 1 (.take ch1)))
@@ -14,7 +14,7 @@
 
 (deftest test-go-and-stop
   (testing "start and stop go routines"
-    (let [ch1 (go-channel) ch2 (go-channel)]
+    (let [ch1 (channel) ch2 (channel)]
       (go (.transfer ch1 1))
       (go (.transfer ch2 2))
       (is (= 1 (.take ch1)))
@@ -35,8 +35,8 @@
       (is (= :go-lightly/timeout (.take ch)))))
 
   (testing "timeout channel with other channels"
-    (let [ch1 (go-channel)
-          ch2 (go-channel)
+    (let [ch1 (channel)
+          ch2 (channel)
           tch (timeout-channel 250)
           fnext-msg (partial select ch1 ch2 tch)]
       ;; this basically tests that it ends => not an infinite loop
@@ -50,9 +50,9 @@
 
 
 (deftest test-select
-  (let [ch1 (go-channel)
-        ch2 (go-channel)
-        ch3 (go-channel)
+  (let [ch1 (channel)
+        ch2 (channel)
+        ch3 (channel)
         qlog (atom #{})]
     (go (test-routine-track-enqueues ch1 qlog))
     (go (test-routine-track-enqueues ch2 qlog))
@@ -65,7 +65,7 @@
   )
 
 (deftest test-select-timeout
-  (let [ch1 (go-channel)  ch2 (go-channel)
+  (let [ch1 (channel)  ch2 (channel)
         timeout 25]
     (go& (test-routine ch1 1))
     (go& (test-routine ch2 2))
@@ -80,7 +80,7 @@
       (is (contains? results 2)))))
 
 (deftest test-nowait
-  (let [ch1 (go-channel)  ch2 (go-channel)]
+  (let [ch1 (channel)  ch2 (channel)]
     (let [results (set
                    (doall
                     (for [_ (range 10)]

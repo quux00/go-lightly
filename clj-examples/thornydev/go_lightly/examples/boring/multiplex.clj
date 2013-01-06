@@ -2,7 +2,7 @@
   (:use thornydev.go-lightly.core))
 
 (defn- boring [msg]
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (go (loop [i 0]
           (.put ch (str msg " " i))
           (Thread/sleep (rand-int 1000))
@@ -11,7 +11,7 @@
 
 
 (defn- fan-in [& chans]
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (doseq [in-chan chans]
       (go (loop []
             (.put ch (.take in-chan))

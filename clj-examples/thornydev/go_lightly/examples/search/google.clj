@@ -35,7 +35,7 @@
 
 ;; each search transfers onto the same channel
 (defn google-20 [query]
-  (let [ch (go/go-channel)]
+  (let [ch (go/channel)]
     (doseq [search [web image video]]
       (go/go (.transfer ch (search query))))
     (vec
@@ -44,7 +44,7 @@
 ;; use a timeout-channel to limit the round of searches
 ;; to a maximum of 80 ms
 (defn google-21 [query]
-  (let [ch (go/go-channel)]
+  (let [ch (go/channel)]
     (doseq [search [web image video]]
       (go/go (.transfer ch (search query))))
 
@@ -62,9 +62,9 @@
 ;; into an output-ch (or an atom would work too) to be able
 ;; to return any queries we did complete
 (defn google-21b [query]
-  (let [search-ch (go/go-channel)
+  (let [search-ch (go/channel)
         searches  [web image video]
-        output-ch (go/go-channel (count searches))]
+        output-ch (go/channel (count searches))]
     (doseq [search searches]
       (go/go (.transfer search-ch (search query))))
 
@@ -83,15 +83,15 @@
    in a separate thread to process the same query.
    Returns the result from the first one to finish."
   [query & replicas]
-  (let [ch (go/go-channel)]
+  (let [ch (go/channel)]
     (doseq [rep replicas]
       (go/go (.put ch (rep query))))
     (.take ch)))
 
 
 (defn google-3 [query]
-  (let [ch (go/go-channel)
-        out-ch (go/go-channel)]
+  (let [ch (go/channel)
+        out-ch (go/channel)]
 
     (go/go (.put ch (first-to-finish query web1 web2)))
     (go/go (.put ch (first-to-finish query image1 image2)))

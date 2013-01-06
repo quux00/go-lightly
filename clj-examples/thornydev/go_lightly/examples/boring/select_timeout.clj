@@ -2,7 +2,7 @@
   (:require [thornydev.go-lightly.core :as go]))
 
 (defn- boring [msg]
-  (let [ch (go/go-channel)]
+  (let [ch (go/channel)]
     (go/go (loop [i 0]
              (.transfer ch (str msg " " i))
              (Thread/sleep (rand-int 1000))

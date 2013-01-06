@@ -43,7 +43,7 @@
    This macro does not yield a future so it cannot be dereferenced.
    Instead it returns the Java Thread itself.
 
-   It is intended to be used with go-channels for communication
+   It is intended to be used with channels for communication
    between threads.  This thread is not part of a managed Thread 
    pool so cannot be directly shutdown.  It will stop either when 
    all non-daemon threads cease or when you stop it some ad-hoc way."
@@ -53,8 +53,8 @@
 
 ;; ---[ channels and channel fn ]--- ;;
 
-(defn go-channel
-  "If no size is specifies, returns a TransferQueue as a go-channel.
+(defn channel
+  "If no size is specifies, returns a TransferQueue as a channel.
    If a size is passed is in, returns a bounded BlockingQueue."
   ([] (LinkedTransferQueue.))
   ([size] (LinkedBlockingQueue. size)))
@@ -63,7 +63,7 @@
   "Create a channel that after the specified duration (in
    millis) will have the :go-lightly/timeout sentinel value"
   [duration]
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (go& (do (Thread/sleep duration)
              (.put ch :go-lightly/timeout)))
     ch))
@@ -112,7 +112,7 @@
 ;; need to be read preferentially, so we would need to add
 ;; some polymorphism or flags to detect which are timeout
 ;; channels => can do this by creating our own protocols for
-;; the go-channel and have a defrecord type of TimerChannel
+;; the channel and have a defrecord type of TimerChannel
 ;; vs. regular GoChannel
 (defn- probe-til-ready [channels timeout]
   (let [start (now)]

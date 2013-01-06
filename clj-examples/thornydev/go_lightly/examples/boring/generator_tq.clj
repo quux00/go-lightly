@@ -4,7 +4,7 @@
 ;; ---[ Use the go macro that requires a stop ]--- ;;
 
 (defn- boring [msg]
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (go (loop [i 0]
           (.transfer ch (str msg " " i))
           (Thread/sleep (rand-int 1000))
@@ -31,7 +31,7 @@
 ;; ---[ Use the fire-and-forget go& macro ]--- ;;
 
 (defn- boring& [msg]
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (go& (loop [i 0]
            (.transfer ch (str msg " " i))
            (Thread/sleep (rand-int 1000))
@@ -57,7 +57,7 @@
   (flush))
 
 (defn engage []
-  (let [ch (go-channel)]
+  (let [ch (channel)]
     (prf "before")
     (prf "size:" (.size ch))
     (prf "peek:" (.peek ch))
