@@ -1,5 +1,6 @@
 (ns thornydev.go-lightly.examples.boring.generator-kachayev
-  (:use lamina.core))
+  (:use lamina.core)
+  (:import (java.util.concurrent TimeoutException)))
 
 ;; Channels-driven concurrency with Clojure
 ;; Clojure variant for code examples from this gist:
@@ -20,8 +21,6 @@
 
 ;; (1) Generator: function that returns the channel
 
-(use 'lamina.core)
-
 (defn- boring 
   [name] 
   (let [ch (channel)] 
@@ -31,7 +30,9 @@
       (dotimes [_ 5] 
         (let [after (int (rand 500))] 
           (Thread/sleep after) 
-          (enqueue ch (str name ": I'm boring after " after)))))
+          (enqueue ch (str name ": I'm boring after " after))))
+      (print (str "closing channel: " name "\n"))
+      (close ch))
     ;; return the channel to caller
     ch))
 
@@ -62,12 +63,13 @@
   ;; More instances...
   ;; Read from one channel, than - from second
   (let [joe (boring "Joe") ann (boring "Ann")] 
-    (loop []
-      (doseq [ch [joe ann]]
+    (while (and (not (closed? joe)) (not (closed? ann)))
+     (doseq [ch [joe ann]]
         ;; TODO: Fix checking for channel closing (this is wrong way)
-        (when-not (closed? ch) (println @(read-channel ch))))
-      (recur)))
-  )
+        (try
+          (when-not (closed? ch)
+            (println @(read-channel* ch :timeout 500)))
+          (catch TimeoutException e (println "timeout")))))))
 
 (defn k1-main5 []
   ;; Read from one channel, than - from second
@@ -80,6 +82,8 @@
         ;; TODO: Fix checking for channel closing (this is wrong way)
         (if (closed? ch) 
           (swap! run dec)
-          (println @(read-channel ch))))
+          (try
+            (println @(read-channel* ch :timeout 500))
+            (catch TimeoutException e))))
       (if (> @run  0) (recur))))
   (println "You're boring: I'm leaving."))

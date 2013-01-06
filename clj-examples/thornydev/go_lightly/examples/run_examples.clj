@@ -6,7 +6,7 @@
    [thornydev.go-lightly.examples.boring.generator-tq :as gentq]
    [thornydev.go-lightly.examples.boring.generator-lamina :as genlam]
    [thornydev.go-lightly.examples.boring.multiplex-kachayev :as mk]
-   [thornydev.go-lightly.examples.boring.multiplex-sq :as psq]
+   [thornydev.go-lightly.examples.boring.multiplex :as plex]
    [thornydev.go-lightly.examples.boring.multiplex-lamina :as plam]
    [thornydev.go-lightly.examples.boring.multiseq-sq :as ssq]
    [thornydev.go-lightly.examples.search.google :refer :all]
@@ -27,7 +27,7 @@
       :gen-lam1 (genlam/single-generator)
       :gen-lam2 (genlam/multiple-generators)
       
-      :plex-sq (psq/multiplex)
+      :plex (plex/multiplex)
       :plex-lam (plam/multiplex)
 
       :seq-sq (ssq/multiseq)
