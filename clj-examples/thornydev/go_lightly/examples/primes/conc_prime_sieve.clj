@@ -1,46 +1,36 @@
 (ns thornydev.go-lightly.examples.primes.conc-prime-sieve
-  (:import (java.util.concurrent SynchronousQueue)))
+  (:require [thornydev.go-lightly.core :as go]))
 
 ;; A Clojure implementation of the Concurrent Primary Sieve
-;; example in Go, using Java SynchronousQueue's
-;; => could not use a Lamina channel, bcs it uses
-;; ConcurrentLinkedQueue, which is unbounded and non-blocking
-;; from: http://play.golang.org/p/9U22NfrXeq
+;; example in Go, using the go-lightly library
+;; Note: could not use a Lamina channel for this particular
+;;       implementation, bcs it uses ConcurrentLinkedQueue,
+;;       which is unbounded and non-blocking
 
-(def inventory (atom []))
-
-(defn go [func]
-  (let [fut (future (func))]
-    (swap! inventory conj fut)))
-
-(defn shutdown []
-  (doseq [f @inventory] (future-cancel f))
-  (shutdown-agents))
-
-(defn sync-channel [] (SynchronousQueue.))
+;; Based on Go implementation at:
+;; http://play.golang.org/p/9U22NfrXeq
 
 (defn generate
-  "send the sequence 2,3,4 ... to the Queue q"
-  [^SynchronousQueue q]
+  "send the sequence 2,3,4 ... to the channel"
+  [channel]
   (doseq [i (iterate inc 2)]
-    (.put q i)))
+    (.transfer channel i)))
+ 
 
-
-(defn filter-primes [^SynchronousQueue qin ^SynchronousQueue qout prime]
-  (loop [i (.take qin)]
+(defn filter-primes [cin cout prime]
+  (loop [i (.take cin)]
     (when-not (zero? (mod i prime))
-      (.put qout i))
-    (recur (.take qin))))
-
+      (.transfer cout i))
+    (recur (.take cin))))
 
 (defn sieve-main [& args]
-  (let [^SynchronousQueue qfirst (sync-channel)]
-    (go #(generate qfirst))
-    (loop [i 10 q qfirst]
+  (let [chfirst (go/go-channel)]
+    (go/go (generate chfirst))
+    (loop [i 10 ch chfirst]
       (when (pos? i)
-        (let [prime (.take q)
-              ^SynchronousQueue q1 (sync-channel)]
+        (let [prime (.take ch)
+              ch1 (go/go-channel)]
           (println prime)
-          (go #(filter-primes q q1 prime))
-          (recur (dec i) q1)))))
-  (shutdown))
+          (go/go (filter-primes ch ch1 prime))
+          (recur (dec i) ch1)))))
+  (go/shutdown))
