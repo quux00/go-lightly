@@ -16,6 +16,7 @@ The rest is a series of example implementations based on talks by Rob Pike.  (Se
 Talks by Rob Pike:
 * [Google I/O 2012 - Go Concurrency Patterns](http://www.youtube.com/watch?v=f6kdp27TYZs&feature=youtu.be)
 * [Concurrency is not Parallelism](http://vimeo.com/49718712) ([slides here](https://rspace.googlecode.com/hg/slide/concur.html#landing-slide))
+* [Google I/O 2010 - Load Balancer Example](https://www.youtube.com/watch?v=jgVhBThJdXc)
 
 The concurrent-primes-sieve is based on this example in Go: http://tinyurl.com/gosieve
 
@@ -34,7 +35,7 @@ I also copied many of Alexey's examples and modified them to get them to run her
 
 Each example can be loaded up in the REPL and run that way.
 
-Because I want to make sure all of these will run and end gracefully (not hang), I also set up a massive case statement in go-lightly.core/-main method to run any of these via `lein run`.  You can run any number of them by using the defined keyword.
+Because I want to make sure all of these will run and end gracefully (not hang), I also set up a massive case statement in the `thornydev.go-lightly.examples.run-examples/-main` method to run any of these via `lein run`.  You can run any number of them by using the defined keyword.
 
 Example:
 

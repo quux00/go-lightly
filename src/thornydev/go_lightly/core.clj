@@ -1,6 +1,7 @@
 (ns thornydev.go-lightly.core
-  (:import (java.util.concurrent LinkedTransferQueue TimeUnit
-                                 TimeoutException)))
+  (:import (java.util ArrayList)
+           (java.util.concurrent LinkedTransferQueue TimeUnit
+                                 LinkedBlockingQueue TimeoutException)))
 
 ;; ---[ go routines ]--- ;;
 
@@ -26,7 +27,8 @@
    routines that could be subject to a race condition."
   []
   (doseq [f @inventory] (future-cancel f))
-  (reset! inventory []))
+  (reset! inventory [])
+  nil)
 
 (defn shutdown []
   "Stop (cancel) all futures started via the go macro and
@@ -52,8 +54,10 @@
 ;; ---[ channels and channel fn ]--- ;;
 
 (defn go-channel
-  "Returns a LinkedTransferQueue as a go-channel"
-  [] (LinkedTransferQueue.))
+  "If no size is specifies, returns a TransferQueue as a go-channel.
+   If a size is passed is in, returns a bounded BlockingQueue."
+  ([] (LinkedTransferQueue.))
+  ([size] (LinkedBlockingQueue. size)))
 
 (defn timeout-channel
   "Create a channel that after the specified duration (in
@@ -159,10 +163,32 @@
 
 
 
+;; ---[ channels to collection/sequence conversions ]--- ;;
+
+;; TODO: make these polymorphic based on channel type?
+
+(defn channel->vec [ch]
+  (vec (.toArray ch)))
+
+(defn drain-to-vec [ch]
+  (let [al (ArrayList.)]
+    (.drainTo ch al)
+    (vec al)))
+
+(defn channel->seq [ch]
+  (seq (.toArray ch)))
+
+;; TODO: need channel->lazy-seq
+
+
 ;; ---[ helper macros ]--- ;;
 
 ;; Credit to mikera
 ;; from: http://stackoverflow.com/a/6697469/871012
+;; TODO: is there a way to do this where the future can
+;;       return something or do something before being
+;;       cancelled?  Would require an abstraction around
+;;       future ...
 (defmacro with-timeout [millis & body]
   `(let [fut# (future ~@body)]
      (try

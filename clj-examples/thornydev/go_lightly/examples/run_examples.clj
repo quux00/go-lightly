@@ -9,15 +9,15 @@
    [thornydev.go-lightly.examples.boring.multiplex :as plex]
    [thornydev.go-lightly.examples.boring.multiplex-lamina :as plam]
    [thornydev.go-lightly.examples.boring.multiseq-sq :as ssq]
-   [thornydev.go-lightly.examples.search.google :refer :all]
+   [thornydev.go-lightly.examples.search.google-lamina :as googlam]
+   [thornydev.go-lightly.examples.search.google :as goog]
    [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]])
   (:gen-class))
 
 (defn -main [& args]
   (doseq [arg args]
     (case (keyword (subs arg 1))
-      ;; ---[ boring-generators ]--- ;;
-      
+      ;; ---[ "boring" variations ]--- ;;
       :gen-tq1 (gentq/single-generator)
       :gen-tq2 (gentq/multiple-generators)
       :gen-amp (gentq/multiple-generators&)
@@ -32,8 +32,7 @@
 
       :seq-sq (ssq/multiseq)
       
-      
-      ;; --- [ kaychayev's code ] --- ;;
+      ;; --- [ kachayev's code ] --- ;;
       :k11 (genk/k1-main1)
       :k12 (genk/k1-main2)
       :k13 (genk/k1-main3)
@@ -42,7 +41,7 @@
       :k21 (mk/k2-multiplex-any)
       :k22 (mk/k2-multiplex-join)
       
-      ;; ---[ simple Pike go examples ]--- ;;
+      ;; ---[ original simple Pike go examples before go-lightly library ]--- ;;
       :one (v1/one)
       :two (v1/two)
       :three (v1/three)
@@ -55,12 +54,21 @@
       :ten (v1/ten-forked-wait-channel)
 
       ;; ---[ google search ]--- ;;
-      :google-1 (google-main :one)
-      :google-2f (google-main :twof)
-      :google-2c (google-main :twoc)
-      :google-2.1 (google-main :2.1)
-      :google-3-alpha (google-main :3-alpha)
-      :google-3 (google-main :three)
+      ;; go-lightly version
+      :goog1.0  (goog/google-main :goog1.0)
+      :goog2.0  (goog/google-main :goog2.0)
+      :goog2.1  (goog/google-main :goog2.1)
+      :goog2.1b (goog/google-main :goog2.1b)
+      :goog3.0  (goog/google-main :goog3.0)
+
+      ;; (clunky) lamina version
+      :googlam1.0 (googlam/google-main :googlam1.0)
+      :googlam2.0f (googlam/google-main :googlam2.0f)
+      :googlam2.0c (googlam/google-main :googlam2.0c)
+      :googlam2.1 (googlam/google-main :googlam2.1)
+      :googlam3-alpha (googlam/google-main :googlam3-alpha)
+      :googlam3.0 (googlam/google-main :googlam3.0)
+      :googlam3.0b (googlam/google-main :googlam3.0b)
 
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)

@@ -1,4 +1,4 @@
-(defproject go-lightly "0.1.0-SNAPSHOT"
+(defproject go-lightly "0.1.1-SNAPSHOT"
   :description "Replicating Go concurrency features in Clojure"
   :url "https://www.youtube.com/watch?v=f6kdp27TYZs&feature=youtu.be"
   :license {:name "Eclipse Public License"
