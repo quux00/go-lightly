@@ -11,10 +11,13 @@
    [thornydev.go-lightly.examples.boring.multiseq-sq :as ssq]
    [thornydev.go-lightly.examples.search.google-lamina :as googlam]
    [thornydev.go-lightly.examples.search.google :as goog]
-   [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]])
+   [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]]
+   [thornydev.go-lightly.examples.webcrawler.webcrawler :as crawl])
   (:gen-class))
 
-(defn -main [& args]
+(declare run-programs)
+
+(defn run-programs [args]
   (doseq [arg args]
     (case (keyword (subs arg 1))
       ;; ---[ "boring" variations ]--- ;;
@@ -82,4 +85,18 @@
 
       (println "WARN: argument not recognized"))
     (println "------------------"))
+  )
+
+(defn -main [& args]
+  (if (= ":webcrawler" (first args))
+    ;; ---[ concurrency prime sieve ]--- ;;
+    ;; this one should only be run by itself (not with other examples in this case stmt)
+    ;; and can take up to three optional args after :webcrawler
+    ;;  arg1: number of crawler go threads (defaults to 1)
+    ;;  arg2: duration (in millis) to run crawling (defaults to 2000)
+    ;;  arg3: initial url to crawl (defaults to http://golang.org/ref/)
+    ;; example: lein run :webcrawler 16 30000
+    (apply crawl/-main (rest args))
+    (run-programs args))
+  
   (shutdown-agents))

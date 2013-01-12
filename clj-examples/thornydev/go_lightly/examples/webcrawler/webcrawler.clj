@@ -110,7 +110,7 @@
   "Takes a number of crawlers to start and spawns them
    in go-lightly routines."
   [ncrawlers]
-  (dotimes [id ncrawlers]
+  (dotimes [_ ncrawlers]
     (go/go (crawl))))
 
 
@@ -217,13 +217,13 @@
 
 (defn parse-args
   "arg1: number of crawler go threads
-   arg2: duration to run crawling
+   arg2: duration to run crawling (in millis)
    arg3: initial url to crawl
    All args are optional"
   [args]
   [(if (= 3 (count args)) (last args) "http://golang.org/ref/")
-     (or (first args) 1)
-     (or (second args) 2000)])
+   (Integer/valueOf (or (first args) 1))
+   (Integer/valueOf (or (second args) 2000))])
 
 (defn -main
   "See parse-args fn for the optional args that can be passed in."

@@ -1,6 +1,7 @@
-// A concurrent prime sieve
-
 package main
+
+// A concurrent prime sieve
+// from: http://play.golang.org/p/9U22NfrXeq
 
 // Send the sequence 2, 3, 4, ... to channel 'ch'.
 func Generate(ch chan<- int) {
