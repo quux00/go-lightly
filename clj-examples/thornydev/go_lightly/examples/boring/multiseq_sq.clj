@@ -1,24 +1,24 @@
 (ns thornydev.go-lightly.examples.boring.multiseq-sq
-  (:require [thornydev.go-lightly.core :refer :all])
+  (:require [thornydev.go-lightly.core :as go])
   (:import java.util.concurrent.SynchronousQueue))
 
 (defn- boring [msg]
   (let [wait-ch (SynchronousQueue.)
         ch      (SynchronousQueue.)]
-    (go (loop [i 0]
-          (.put ch {:str (str msg " " i)
-                    :wait wait-ch})
-          (Thread/sleep (rand-int 1000))
-          (.take wait-ch)
-          (recur (inc i))))
+    (go/go (loop [i 0]
+             (.put ch {:str (str msg " " i)
+                       :wait wait-ch})
+             (Thread/sleep (rand-int 1000))
+             (.take wait-ch)
+             (recur (inc i))))
     ch))
 
 (defn- fan-in [in-chan1 in-chan2]
   (let [ch (SynchronousQueue.)]
     (doseq [inchan [in-chan1 in-chan2]]
-      (go (loop []
-             (.put ch (.take inchan))
-             (recur))))
+      (go/go (loop []
+               (.put ch (.take inchan))
+               (recur))))
     ch))
 
 
@@ -33,4 +33,4 @@
         (.put (:wait msg1) true)
         (.put (:wait msg2) true)))
     (println "You're both boring: I'm leaving.")
-    (stop)))
+    (go/stop)))

@@ -1,21 +1,21 @@
 (ns thornydev.go-lightly.examples.boring.generator-tq
-  (:require [thornydev.go-lightly.core :refer :all]))
+  (:require [thornydev.go-lightly.core :as go]))
 
 ;; ---[ Use the go macro that requires a stop ]--- ;;
 
 (defn- boring [msg]
-  (let [ch (channel)]
-    (go (loop [i 0]
-          (.transfer ch (str msg " " i))
-          (Thread/sleep (rand-int 1000))
-          (recur (inc i))))
+  (let [ch (go/channel)]
+    (go/go (loop [i 0]
+             (.transfer ch (str msg " " i))
+             (Thread/sleep (rand-int 1000))
+             (recur (inc i))))
     ch))
 
 (defn single-generator []
   (let [ch (boring "boring!")]
     (dotimes [_ 5] (println "You say:" (.take ch))))
   (println "You're boring: I'm leaving.")
-  (stop))
+  (go/stop))
 
 (defn multiple-generators []
   (let [joe (boring "Joe")
@@ -24,15 +24,15 @@
       (println (.take joe))
       (println (.take ann))))
   (println "You're boring: I'm leaving.")
-  (stop))
+  (go/stop))
 
 
 
 ;; ---[ Use the fire-and-forget go& macro ]--- ;;
 
 (defn- boring& [msg]
-  (let [ch (channel)]
-    (go& (loop [i 0]
+  (let [ch (go/channel)]
+    (go/go& (loop [i 0]
            (.transfer ch (str msg " " i))
            (Thread/sleep (rand-int 1000))
            (recur (inc i))))
@@ -57,7 +57,7 @@
   (flush))
 
 (defn engage []
-  (let [ch (channel)]
+  (let [ch (go/channel)]
     (prf "before")
     (prf "size:" (.size ch))
     (prf "peek:" (.peek ch))

@@ -1,4 +1,5 @@
 (ns thornydev.go-lightly.core
+  (:refer-clojure :exclude [peek take])
   (:import (java.util ArrayList)
            (java.util.concurrent LinkedTransferQueue TimeUnit
                                  LinkedBlockingQueue TimeoutException)))
@@ -54,11 +55,68 @@
 
 ;; ---[ channels and channel fn ]--- ;;
 
+(defprotocol GoChannel
+  (put [this val] "Put a value on a channel")
+  (size [this] "Returns the number of values on the queue"))
+
+(deftype Channel [^LinkedTransferQueue q open? prefer?]
+  GoChannel
+  (put [this val]
+    (if @(.open? this)
+      (.transfer (.q this) val)
+      (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
+  (size [this] 0))
+
+(deftype BufferedChannel [^LinkedBlockingQueue q open? prefer?]
+  GoChannel
+  (put [this val]
+    (if @(.open? this)
+      (.put (.q this) val)
+      (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
+  (size [this] (.size (.q this))))
+
+(deftype TimeoutChannel [^LinkedBlockingQueue q open? prefer?]
+  GoChannel
+  (put [this val] (throw (UnsupportedOperationException.
+                          "Cannot put values onto a TimeoutChannel")))
+  (size [this] (.size (.q this))))
+
+(defn take [channel] (.take (.q channel)))
+(defn peek [channel] (.peek (.q channel)))
+
+(defn close [channel]
+  (reset! (.open? channel) false)
+  nil)
+
+(defn closed? [channel]
+  (not @(.open? channel)))
+
+(defn prefer [channel]
+  (reset! (.prefer? channel) true))
+
+(defn unprefer [channel]
+  (reset! (.prefer? channel) false))
+
+(defn preferred? [channel]
+  @(.prefer? channel))
+
+(defn preferred-channel
+  ([] (->Channel (LinkedTransferQueue.) (atom true) (atom true)))
+  ([capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom true))))
+
+(defn timed-channel
+  [duration-ms]
+  (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
+    (go& (do (Thread/sleep duration-ms)
+             (.put (.q ch) :go-lightly/timeout)
+             (close ch)))
+    ch))
+
 (defn channel
   "If no size is specifies, returns a TransferQueue as a channel.
    If a size is passed is in, returns a bounded BlockingQueue."
   ([] (LinkedTransferQueue.))
-  ([size] (LinkedBlockingQueue. size)))
+  ([capacity] (LinkedBlockingQueue. capacity)))
 
 (defn timeout-channel
   "Create a channel that after the specified duration (in

@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.examples.boring.generator-sq
-  (:require [thornydev.go-lightly.core :refer :all])
+  (:require [thornydev.go-lightly.core :as go])
   (:import (java.util.concurrent SynchronousQueue)))
 
 
@@ -7,7 +7,7 @@
 
 (defn- boring [msg]
   (let [ch (SynchronousQueue.)]
-    (go& (loop [i 0]
+    (go/go& (loop [i 0]
           (.put ch (str msg " " i))
           (Thread/sleep (rand-int 1000))
           (recur (inc i))))

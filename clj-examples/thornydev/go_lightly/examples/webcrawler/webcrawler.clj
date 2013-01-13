@@ -130,7 +130,7 @@
    Returns a revised word frequency map."
   [msubtots]
   (->> msubtots
-       (conj (go/drain-to-vec freqs-channel))
+       (conj (vec (go/drain freqs-channel)))
        (apply merge-with +)))
 
 (defn reduce-freqs

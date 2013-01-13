@@ -163,10 +163,14 @@ Three pools of state to webcrawler example
 
 fn                channel        buffered-channel
 ------            -------        ----------------
-put              .transfer       .put (blocks only if full) or .offer
-take             .take           .poll
-put :timeout     .offer timeout  .offer timeout
-offer            .offer timeout  .offer timeout
-take :timeout    .poll timeout   .poll timeout
-poll             .poll timeout   .poll timeout
+put              .transfer       .put (blocks only if full)
+take             .take           .take (blocks only if empty) 
 peek             .peek           .peek
+select-timeout   .poll timeout   .poll timeout  (if only one channel passed)
+select-nowait    .poll           .poll
+size             .size           .size
+
+
+
+## Reading to do
+https://groups.google.com/forum/?hl=fr&fromgroups=#!topic/golang-nuts/koCM3i-bbMs
