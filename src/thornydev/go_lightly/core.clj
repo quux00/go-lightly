@@ -101,8 +101,8 @@
   @(.prefer? channel))
 
 (defn preferred-channel
-  ([] (->Channel (LinkedTransferQueue.) (atom true) (atom true)))
-  ([capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom true))))
+  ([] (prefer (channel)))
+  ([capacity] (prefer (channel capacity))))
 
 (defn timed-channel
   [duration-ms]

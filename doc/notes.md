@@ -174,3 +174,5 @@ size             .size           .size
 
 ## Reading to do
 https://groups.google.com/forum/?hl=fr&fromgroups=#!topic/golang-nuts/koCM3i-bbMs
+* Notes from above
+** Synchronous channels have a lot of advantages by making program flow predictable and easier to think about.

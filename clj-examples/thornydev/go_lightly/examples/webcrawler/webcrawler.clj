@@ -44,8 +44,8 @@
 ;; ---[ crawler section ]--- ;;
 
 (defn links-from
-  [base-url html]
   "Returns a lazy-seq of URLs from parsing a web page"
+  [base-url html]
   (remove nil? (for [link (enlive/select html [:a])]
                  (when-let [href (-> link :attrs :href)]
                    (try
@@ -54,8 +54,8 @@
                      (catch MalformedURLException e))))))
 
 (defn words-from
-  [html]
   "Returns a lazy-seq of words from parsing a web page"
+  [html]
   (let [chunks (-> html
                  (enlive/at [:script] nil)
                  (enlive/select [:body enlive/text-node]))]
