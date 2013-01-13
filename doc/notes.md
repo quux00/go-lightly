@@ -87,6 +87,28 @@ But I've been playing with lamina as a tool to implement the concurrency constru
  * you would give it reference to a wait or pause channel and send a message on it
  * how would you unpause it?  send another message on that channel telling it to resume - it would block on that wait channel waiting for a resume msg
 
+### add meta-data :prefer to prefer or priotize the channel in a go/select clause => note that meta-data is tricky -> has to be applied to the value not the Var and to apply it to a value it must implement IObj, so another reason to create a defrecord/deftype for the channel types.
+
+Notes on meta-data:
+
+    user=> (defn show-meta [v] (println (meta v)))
+    #'user/show-meta
+    user=> (def ^:prefer ch (channel))
+    #'user/ch
+    user=> (show-meta ch)
+    nil
+    nil
+    user=> (show-meta #'ch)
+    {:prefer true, :ns #<Namespace user>, :name ch, :line 1,
+     :file NO_SOURCE_PATH}
+    user=> (def ch1 (with-meta #{(channel)} {:prefer true}))
+    #'user/ch1
+    user=> (show-meta ch1)
+    {:prefer true}
+    nil
+    user=> ch1
+    #{#<LinkedTransferQueue []>}
+
 
 ## Go channels
 http://golang.org/ref/spec
@@ -106,7 +128,11 @@ tinyurl.com/gopowerseries
 * http://docs.racket-lang.org/reference/sync.html#(def._((quote._~23~25kernel)._sync))
 
 
-## Notes for blog entries
+## ----- Notes for blog entries ----- ##
+* from the channel webcrawler example: almost none of the fns are referentially transparent or testable in isolation :-(
+
+
+Go channels are strongly typed – you can only pass a single type of value over a channel.
 
 
 
@@ -133,3 +159,14 @@ Three pools of state to webcrawler example
 
 
 
+## Notes on channel types and actions
+
+fn                channel        buffered-channel
+------            -------        ----------------
+put              .transfer       .put (blocks only if full) or .offer
+take             .take           .poll
+put :timeout     .offer timeout  .offer timeout
+offer            .offer timeout  .offer timeout
+take :timeout    .poll timeout   .poll timeout
+poll             .poll timeout   .poll timeout
+peek             .peek           .peek

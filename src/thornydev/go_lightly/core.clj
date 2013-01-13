@@ -30,22 +30,23 @@
   (reset! inventory [])
   nil)
 
-(defn shutdown []
+(defn shutdown
   "Stop (cancel) all futures started via the go macro and
    then call shutdown-agents to close down the entire Clojure
    agent/future thread pool."
+  []
   (stop)
   (shutdown-agents))
 
 
 (defmacro go&
-  "Launch a 'go-routine' like deamon Thread to execute the body. 
+  "Launch a 'go-routine' like deamon Thread to execute the body.
    This macro does not yield a future so it cannot be dereferenced.
    Instead it returns the Java Thread itself.
 
    It is intended to be used with channels for communication
-   between threads.  This thread is not part of a managed Thread 
-   pool so cannot be directly shutdown.  It will stop either when 
+   between threads.  This thread is not part of a managed Thread
+   pool so cannot be directly shutdown.  It will stop either when
    all non-daemon threads cease or when you stop it some ad-hoc way."
   [& body]
   `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
@@ -150,11 +151,11 @@
   (doselect channels timeout nil))
 
 (defn select-nowait
-  [& channels]
   "Like select, selects one message from the channels passed in
    with the same behavior except that if no channel has a message
    ready, it immediately returns nil or the sentinel keyword value
    passed in as the last argument."
+  [& channels]
   (let [[chans sentinel] (parse-nowait-args channels)
         result (doselect chans nil :nowait)]
     (if (and (nil? result) (seq? sentinel))
@@ -162,24 +163,43 @@
       result)))
 
 
-
 ;; ---[ channels to collection/sequence conversions ]--- ;;
 
-;; TODO: make these polymorphic based on channel type?
-
-(defn channel->vec [ch]
-  (vec (.toArray ch)))
-
-(defn drain-to-vec [ch]
-  (let [al (ArrayList.)]
-    (.drainTo ch al)
-    (vec al)))
-
-(defn channel->seq [ch]
+(defn channel->seq
+  "Takes a snapshot of all values on a channel *without* removing
+   the values from the channel. Returns a (non-lazy) seq of the values.
+   Generally recommended for use with a buffered channel, but will return
+   return a single value if a producer is waiting to put one on."
+  [ch]
   (seq (.toArray ch)))
 
-;; TODO: need channel->lazy-seq
+(defn channel->vec
+  "Takes a snapshot of all values on a channel *without* removing
+   the values from the channel. Returns a vector of the values.
+   Generally recommended for use with a buffered channel, but will return
+   return a single value if a producer is waiting to put one on."
+  [ch]
+  (vec (.toArray ch)))
 
+(defn drain
+  "Removes all the values on a channel and returns them as a non-lazy seq.
+   Generally recommended for use with a buffered channel, but will return
+   a pending transfer value if a producer is waiting to put one on."
+  [ch]
+  (let [al (ArrayList.)]
+    (.drainTo ch al)
+    (seq al)))
+
+(defn lazy-drain
+  "Lazily removes values from a channel. Returns a Cons lazy-seq until
+   it reaches the end of the channel.
+   Generally recommended for use with a buffered channel, but will return
+   on or more values one or more producer(s) is waiting to put a one or
+   more values on.  There is a race condition with producers when using."
+  [ch]
+  (if-let [v (.poll ch)]
+    (cons v (lazy-seq (lazy-drain ch)))
+    nil))
 
 ;; ---[ helper macros ]--- ;;
 
@@ -193,9 +213,7 @@
   `(let [fut# (future ~@body)]
      (try
        (.get fut# ~millis TimeUnit/MILLISECONDS)
-       (catch TimeoutException x# 
+       (catch TimeoutException x#
          (do
            (future-cancel fut#)
            nil)))))
-
-
