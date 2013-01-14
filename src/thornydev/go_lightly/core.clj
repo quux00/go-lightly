@@ -207,8 +207,7 @@
 ;; from: http://stackoverflow.com/a/6697469/871012
 ;; TODO: is there a way to do this where the future can
 ;;       return something or do something before being
-;;       cancelled?  Would require an abstraction around
-;;       future ...
+;;       cancelled?  Would require an abstraction around future ...
 (defmacro with-timeout [millis & body]
   `(let [fut# (future ~@body)]
      (try

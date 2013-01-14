@@ -4,14 +4,16 @@ A foray into implementing the concurrency constructs of the Go language in Cloju
 
 This is in the very early stages of exploration and I'm documenting that exploration a series of blog posts.
 
-* Part 1: http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html
-* Part 2: http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html
+* Part 1: [introduction](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html)
+* Part 2: [select](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html)
+* Part 3: [why go-lightly?](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure3.html)
+* Part 4: [idioms and tradeoff](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure4.html)
 
 ## Structure
 
 The go-lightly namespace has only one library piece so far: the thornydev.go-lightly.core namespace that defines helper macros and functions.
 
-The rest is a series of example implementations based on talks by Rob Pike.  (See the clj-examples directory.)
+The rest is a series of example implementations based on talks by Rob Pike, which are in clj-examples directory.  I've added a webcrawler example based on the webcrawler from Ch. 4 of the O'Reilly Clojure Programming, which uses an agent-based state machine model, whereas I implemented using channels (both synchronous and async buffered) as much as possible.
 
 Talks by Rob Pike:
 * [Google I/O 2012 - Go Concurrency Patterns](http://www.youtube.com/watch?v=f6kdp27TYZs&feature=youtu.be)
@@ -19,6 +21,17 @@ Talks by Rob Pike:
 * [Google I/O 2010 - Load Balancer Example](https://www.youtube.com/watch?v=jgVhBThJdXc)
 
 The concurrent-primes-sieve is based on this example in Go: http://tinyurl.com/gosieve
+
+Many of the Go examples are transcribed in the go-examples directory of this project.
+
+
+## Next steps / TODOs
+
+* I intend to wrapper the Java concurrent queues in Clojure types that will simplify their use and provide additional featues not available in the raw Java classes.  The examples will have to refactored at that point as the channel API will significantly change.
+* Have the ability to mark a channel as "preferred" for a select statement.  Preferred channels will be searched first in a select statement.  Timeout channels will be a preferred channel by default.
+* 
+* More Go examples in Clojure with go-lightly (Pike's simple load balancer?  Pike's chinese whispers example?)
+* Benchmarks
 
 
 ## Dependencies and input from others
