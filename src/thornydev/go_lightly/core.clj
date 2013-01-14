@@ -1,6 +1,7 @@
 (ns thornydev.go-lightly.core
   (:refer-clojure :exclude [peek take])
-  (:import (java.util ArrayList)
+  (:import (java.io Closeable)
+           (java.util ArrayList)
            (java.util.concurrent LinkedTransferQueue TimeUnit
                                  LinkedBlockingQueue TimeoutException)))
 
@@ -65,7 +66,19 @@
     (if @(.open? this)
       (.transfer (.q this) val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
-  (size [this] 0))
+  (size [this] 0)
+
+  Object
+  (toString [this]
+    (if-let [sq (seq (.toArray (.q this)))]
+      (str "<=[ ..." sq "] ")
+      (str "<=[] ")))
+  
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil)
+  )
 
 (deftype BufferedChannel [^LinkedBlockingQueue q open? prefer?]
   GoChannel
@@ -73,20 +86,39 @@
     (if @(.open? this)
       (.put (.q this) val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
-  (size [this] (.size (.q this))))
+  (size [this] (.size (.q this)))
+
+  Object
+  (toString [this]
+    (str "<=[" (apply str (interpose " " (seq (.toArray (.q this))))) "] "))
+  
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil)
+  )
 
 (deftype TimeoutChannel [^LinkedBlockingQueue q open? prefer?]
   GoChannel
   (put [this val] (throw (UnsupportedOperationException.
                           "Cannot put values onto a TimeoutChannel")))
-  (size [this] (.size (.q this))))
+  (size [this] (.size (.q this)))
+
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil)
+  )
+
+;; TODO: doesn't work - why not?
+;; (defmethod print-method BufferedChannel
+;;   [ch w]
+;;   (print-method '<- w) (print-method (seq (.q ch) w) (print-method '-< w)))
 
 (defn take [channel] (.take (.q channel)))
 (defn peek [channel] (.peek (.q channel)))
 
-(defn close [channel]
-  (reset! (.open? channel) false)
-  nil)
+(defn close [channel] (.close channel))
 
 (defn closed? [channel]
   (not @(.open? channel)))
@@ -100,10 +132,21 @@
 (defn preferred? [channel]
   @(.prefer? channel))
 
+;; (defn channel
+;;   "If no size is specifies, returns a TransferQueue as a channel.
+;;    If a size is passed is in, returns a bounded BlockingQueue."
+;;   ([] (LinkedTransferQueue.))
+;;   ([capacity] (LinkedBlockingQueue. capacity)))
+
+(defn channel
+  ([] (->Channel (LinkedTransferQueue.) (atom true) (atom false)))
+  ([capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom false))))
+
 (defn preferred-channel
   ([] (prefer (channel)))
   ([capacity] (prefer (channel capacity))))
 
+;; TODO: rename to timeout-channel
 (defn timed-channel
   [duration-ms]
   (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
@@ -112,12 +155,7 @@
              (close ch)))
     ch))
 
-(defn channel
-  "If no size is specifies, returns a TransferQueue as a channel.
-   If a size is passed is in, returns a bounded BlockingQueue."
-  ([] (LinkedTransferQueue.))
-  ([capacity] (LinkedBlockingQueue. capacity)))
-
+;; TODO: remove later
 (defn timeout-channel
   "Create a channel that after the specified duration (in
    millis) will have the :go-lightly/timeout sentinel value"
@@ -127,7 +165,7 @@
              (.put ch :go-lightly/timeout)))
     ch))
 
-
+;; TODO: remove later after proving that Closeable works
 ;; right now this is for use only with the lamina channels which can be closed
 ;; copied and modified from with-open from clojure.core
 (defmacro with-channel-open
