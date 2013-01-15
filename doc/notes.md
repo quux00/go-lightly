@@ -26,6 +26,39 @@
        Execution time upper quantile : 82.208824 ms (97.5%)
 
 
+* google-2.0 benchmarks: typed
+
+    Evaluation count : 960 in 60 samples of 16 calls.
+                 Execution time mean : 75.600093 ms
+        Execution time std-deviation : 4.939574 ms
+       Execution time lower quantile : 64.870360 ms ( 2.5%)
+       Execution time upper quantile : 84.254095 ms (97.5%)
+
+* google-3.0-nt benchmarks: typed
+
+    ;; with buffered-channel in first-to-finish
+    Evaluation count : 1260 in 60 samples of 21 calls.
+                 Execution time mean : 54.121599 ms
+        Execution time std-deviation : 4.514020 ms
+       Execution time lower quantile : 44.190562 ms ( 2.5%)
+       Execution time upper quantile : 61.165908 ms (97.5%)
+
+    ;; with sync-channel in first-to-finish
+    Evaluation count : 1320 in 60 samples of 22 calls.
+                 Execution time mean : 53.796138 ms
+        Execution time std-deviation : 4.069949 ms
+       Execution time lower quantile : 47.272136 ms ( 2.5%)
+       Execution time upper quantile : 61.356316 ms (97.5%)
+
+    ;; with sync-channel in first-to-finish
+    Evaluation count : 1380 in 60 samples of 23 calls.
+                 Execution time mean : 54.083988 ms
+        Execution time std-deviation : 4.317564 ms
+       Execution time lower quantile : 45.592715 ms ( 2.5%)
+       Execution time upper quantile : 61.786262 ms (97.5%)
+
+
+
 ## Notes on Lamina
 
 http://ideolalia.com/110624930

@@ -14,21 +14,21 @@
   "send the sequence 2,3,4 ... to the channel"
   [channel]
   (doseq [i (iterate inc 2)]
-    (.transfer channel i)))
+    (go/put channel i)))
  
 
 (defn filter-primes [cin cout prime]
-  (loop [i (.take cin)]
+  (loop [i (go/take cin)]
     (when-not (zero? (mod i prime))
-      (.transfer cout i))
-    (recur (.take cin))))
+      (go/put cout i))
+    (recur (go/take cin))))
 
 (defn sieve-main [& args]
   (let [chfirst (go/channel)]
     (go/go (generate chfirst))
     (loop [i 10 ch chfirst]
       (when (pos? i)
-        (let [prime (.take ch)
+        (let [prime (go/take ch)
               ch1 (go/channel)]
           (println prime)
           (go/go (filter-primes ch ch1 prime))

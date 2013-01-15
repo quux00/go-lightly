@@ -58,7 +58,9 @@
 
 (defprotocol GoChannel
   (put [this val] "Put a value on a channel")
-  (size [this] "Returns the number of values on the queue"))
+  (take [this] "Take a value from a channel")
+  (size [this] "Returns the number of values on the queue")
+  (peek [this] ""))
 
 (deftype Channel [^LinkedTransferQueue q open? prefer?]
   GoChannel
@@ -66,6 +68,9 @@
     (if @(.open? this)
       (.transfer q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
+
+  (take [this] (.take q))
+  (peek [this] (.peek q))
   (size [this] 0)
 
   Object
@@ -86,8 +91,11 @@
     (if @(.open? this)
       (.put q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
-  (size [this] (.size q))
 
+  (take [this] (.take q))  
+  (peek [this] (.peek q))
+  (size [this] (.size q))
+  
   Object
   (toString [this]
     (let [stat-str (when-not @(.open? this) ":closed ")]
@@ -102,6 +110,8 @@
   GoChannel
   (put [this val] (throw (UnsupportedOperationException.
                           "Cannot put values onto a TimeoutChannel")))
+  (take [this] (.take q))
+  (peek [this] (.peek q))
   (size [this] (.size q))
 
   Object
@@ -120,8 +130,6 @@
 ;;   [ch w]
 ;;   (print-method '<- w) (print-method (seq (.q ch) w) (print-method '-< w)))
 
-(defn take [channel] (.take (.q channel)))
-(defn peek [channel] (.peek (.q channel)))
 (defn close [channel] (.close channel))
 
 (defn closed? [channel]
@@ -144,7 +152,7 @@
 
 (defn channel
   ([] (->Channel (LinkedTransferQueue.) (atom true) (atom false)))
-  ([capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom false))))
+  ([^long capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom false))))
 
 (defn preferred-channel
   ([] (prefer (channel)))
@@ -177,10 +185,10 @@
     (> (now) (+ start duration))))
 
 (defn- choose [ready-chans]
-  (.take (nth ready-chans (rand-int (count ready-chans)))))
+  (take (nth ready-chans (rand-int (count ready-chans)))))
 
 (defn- peek-channels [channels]
-  (let [ready (doall (keep #(when-not (nil? (.peek %)) %) channels))]
+  (let [ready (doall (keep #(when-not (nil? (peek %)) %) channels))]
     (if (seq ready)
       (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
       (Thread/sleep 0 500))))
@@ -195,12 +203,12 @@
   (let [start (now)]
     (loop [chans channels ready-chan nil]
       (cond
-       ready-chan (.take ready-chan)
+       ready-chan (take ready-chan)
        (timed-out? start timeout) :go-lightly/timeout
        :else (recur channels (peek-channels channels))))))
 
 (defn- doselect [channels timeout nowait]
-  (let [ready (doall (filterv #(not (nil? (.peek %))) channels))]
+  (let [ready (doall (filterv #(not (nil? (peek %))) channels))]
     (if (seq ready)
       (choose ready)
       (when-not nowait
@@ -247,7 +255,7 @@
    Generally recommended for use with a buffered channel, but will return
    return a single value if a producer is waiting to put one on."
   [ch]
-  (seq (.toArray ch)))
+  (seq (.toArray (.q ch))))
 
 (defn channel->vec
   "Takes a snapshot of all values on a channel *without* removing
@@ -255,7 +263,7 @@
    Generally recommended for use with a buffered channel, but will return
    return a single value if a producer is waiting to put one on."
   [ch]
-  (vec (.toArray ch)))
+  (vec (.toArray (.q ch))))
 
 (defn drain
   "Removes all the values on a channel and returns them as a non-lazy seq.
@@ -263,7 +271,7 @@
    a pending transfer value if a producer is waiting to put one on."
   [ch]
   (let [al (ArrayList.)]
-    (.drainTo ch al)
+    (.drainTo (.q ch) al)
     (seq al)))
 
 (defn lazy-drain
@@ -273,7 +281,7 @@
    on or more values one or more producer(s) is waiting to put a one or
    more values on.  There is a race condition with producers when using."
   [ch]
-  (if-let [v (.poll ch)]
+  (if-let [v (.poll (.q ch))]
     (cons v (lazy-seq (lazy-drain ch)))
     nil))
 
