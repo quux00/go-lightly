@@ -181,27 +181,26 @@
 (defn- choose [ready-chans]
   (take (nth ready-chans (rand-int (count ready-chans)))))
 
-(defn- peek-channels [channels]
-  (let [ready (doall (keep #(when-not (nil? (peek %)) %) channels))]
-    (if (seq ready)
-      (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
-      (Thread/sleep 0 500))))
+(defn- filter-ready [chans]
+  (seq (doall (filter #(not (nil? (peek %))) chans))))
 
-;; TODO: if any of these channels are timeout channels, they
-;; need to be read preferentially, so we would need to add
-;; some polymorphism or flags to detect which are timeout
-;; channels => can do this by creating our own protocols for
-;; the channel and have a defrecord type of TimerChannel
-;; vs. regular GoChannel
-(defn- probe-til-ready [channels timeout]
+(defn- attempt-select [pref-chans reg-chans]
+  (if-let [ready-list (filter-ready pref-chans)]
+    (choose ready-list)
+    (when-let [ready-list (filter-ready reg-chans)]
+      (choose ready-list))))
+
+(defn probe-til-ready [pref-chans reg-chans timeout]
   (let [start (now)]
-    (loop [chans channels ready-chan nil]
+    (loop [ready-chan nil mcsec 200]
       (cond
        ready-chan (take ready-chan)
        (timed-out? start timeout) :go-lightly/timeout
-       :else (recur channels (peek-channels channels))))))
+       :else (do (Thread/sleep 0 mcsec)
+                 (recur (attempt-select pref-chans reg-chans)
+                        (min 1500 (+ mcsec 25))))))))
 
-(defn- separate-preferred [channels]
+(defn separate-preferred [channels]
   (loop [chans channels pref [] reg []]
     (if (seq chans)
       (if (preferred? (first chans))
@@ -209,18 +208,12 @@
         (recur (rest chans) pref (conj reg (first chans))))
       [pref reg])))
 
-(defn- filter-ready [chans]
-  (seq (doall (filter #(not (nil? (peek %))) chans))))
-
-(defn- doselect [channels timeout nowait]
+(defn doselect [channels timeout nowait]
   (let [[pref-chans reg-chans] (separate-preferred channels)]
-    (if-let [ready (filter-ready pref-chans)]
-      (choose ready)
-      (if-let [ready (filter-ready reg-chans)]
-        (choose ready)
-        (when-not nowait
-          (probe-til-ready channels timeout)))))
-  )
+    (if-let [ready (attempt-select pref-chans reg-chans)]
+      ready
+      (when-not nowait
+        (probe-til-ready pref-chans reg-chans timeout)))))
 
 (defn- parse-nowait-args [channels]
   (if (keyword? (last channels))
