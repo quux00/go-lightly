@@ -64,51 +64,56 @@
   GoChannel
   (put [this val]
     (if @(.open? this)
-      (.transfer (.q this) val)
+      (.transfer q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
   (size [this] 0)
 
   Object
   (toString [this]
-    (if-let [sq (seq (.toArray (.q this)))]
-      (str "<=[ ..." sq "] ")
-      (str "<=[] ")))
+    (let [stat-str (when-not @(.open? this) ":closed ")]
+      (if-let [sq (seq (.toArray q))]
+        (str stat-str "<=[ ..." sq "] ")
+        (str stat-str "<=[] "))))
   
   Closeable
   (close [this]
     (reset! (.open? this) false)
-    nil)
-  )
+    nil))
 
 (deftype BufferedChannel [^LinkedBlockingQueue q open? prefer?]
   GoChannel
   (put [this val]
     (if @(.open? this)
-      (.put (.q this) val)
+      (.put q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
-  (size [this] (.size (.q this)))
+  (size [this] (.size q))
 
   Object
   (toString [this]
-    (str "<=[" (apply str (interpose " " (seq (.toArray (.q this))))) "] "))
+    (let [stat-str (when-not @(.open? this) ":closed ")]
+      (str stat-str "<=[" (apply str (interpose " " (seq (.toArray q)))) "] ")))
   
   Closeable
   (close [this]
     (reset! (.open? this) false)
-    nil)
-  )
+    nil))
 
 (deftype TimeoutChannel [^LinkedBlockingQueue q open? prefer?]
   GoChannel
   (put [this val] (throw (UnsupportedOperationException.
                           "Cannot put values onto a TimeoutChannel")))
-  (size [this] (.size (.q this)))
+  (size [this] (.size q))
 
+  Object
+  (toString [this]
+    (if (closed? this)
+      ":closed <=[:go-lightly/timeout] "
+      "<=[] "))
+  
   Closeable
   (close [this]
     (reset! (.open? this) false)
-    nil)
-  )
+    nil))
 
 ;; TODO: doesn't work - why not?
 ;; (defmethod print-method BufferedChannel
@@ -117,7 +122,6 @@
 
 (defn take [channel] (.take (.q channel)))
 (defn peek [channel] (.peek (.q channel)))
-
 (defn close [channel] (.close channel))
 
 (defn closed? [channel]
@@ -146,8 +150,7 @@
   ([] (prefer (channel)))
   ([capacity] (prefer (channel capacity))))
 
-;; TODO: rename to timeout-channel
-(defn timed-channel
+(defn timeout-channel
   [duration-ms]
   (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
     (go& (do (Thread/sleep duration-ms)
@@ -156,37 +159,14 @@
     ch))
 
 ;; TODO: remove later
-(defn timeout-channel
-  "Create a channel that after the specified duration (in
-   millis) will have the :go-lightly/timeout sentinel value"
-  [duration]
-  (let [ch (channel)]
-    (go& (do (Thread/sleep duration)
-             (.put ch :go-lightly/timeout)))
-    ch))
-
-;; TODO: remove later after proving that Closeable works
-;; right now this is for use only with the lamina channels which can be closed
-;; copied and modified from with-open from clojure.core
-(defmacro with-channel-open
-  "bindings => [name init ...]
-
-  Evaluates body in a try expression with names bound to the values
-  of the inits, and a finally clause that calls (close name) on each
-  name in reverse order."
-  [bindings & body]
-  (assert (vector? bindings) "a vector for its binding")
-  (assert (even? (count bindings)) "an even number of forms in binding vector")
-  (cond
-    (= (count bindings) 0) `(do ~@body)
-    (symbol? (bindings 0)) `(let ~(subvec bindings 0 2)
-                              (try
-                                (with-channel-open ~(subvec bindings 2) ~@body)
-                                (finally
-                                  (~'close ~(bindings 0)))))
-    :else (throw (IllegalArgumentException.
-                   "with-open only allows Symbols in bindings"))))
-
+;; (defn timeout-channel
+;;   "Create a channel that after the specified duration (in
+;;    millis) will have the :go-lightly/timeout sentinel value"
+;;   [duration]
+;;   (let [ch (channel)]
+;;     (go& (do (Thread/sleep duration)
+;;              (.put ch :go-lightly/timeout)))
+;;     ch))
 
 ;; ---[ select and helper fns ]--- ;;
 
