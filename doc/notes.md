@@ -58,6 +58,32 @@
        Execution time upper quantile : 61.786262 ms (97.5%)
 
 
+### chinese-whispers benchmarks
+
+    user=> (time (w/whispers-as-you-go 200000))
+    200001
+    "Elapsed time: 8800.131523 msecs"
+    
+    user=> (time (w/whispers-as-you-go 100000))
+    100001
+    "Elapsed time: 4329.229876 msecs"
+    
+    user=> (time (w/whispers-as-you-go 100000))
+    100001
+    "Elapsed time: 4472.125846 msecs"
+    
+    user=> (time (w/whispers-as-you-go 20000))
+    20001
+    "Elapsed time: 3285.003332 msecs"
+    
+    user=> (time (w/whispers-main 20000))
+    20001
+    "Elapsed time: 434.828855 msecs"
+    
+    user=> (time (w/whispers-main 10000))
+    10001
+    "Elapsed time: 260.610251 msecs"
+
 
 ## Notes on Lamina
 
