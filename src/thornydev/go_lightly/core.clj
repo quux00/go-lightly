@@ -194,7 +194,7 @@
   (let [start (now)]
     (loop [ready-chan nil mcsec 200]
       (cond
-       ready-chan (take ready-chan)
+       ready-chan ready-chan
        (timed-out? start timeout) :go-lightly/timeout
        :else (do (Thread/sleep 0 mcsec)
                  (recur (attempt-select pref-chans reg-chans)
