@@ -9,4 +9,5 @@
                  [enlive "1.0.1"]]
   :source-paths ["src" "clj-examples"]
   :javac-options ["-target" "1.7"]
+  :jvm-opts ["-Xmx2g" "-server"] 
   :main thornydev.go-lightly.examples.run-examples)

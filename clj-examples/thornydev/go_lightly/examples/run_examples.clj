@@ -12,7 +12,8 @@
    [thornydev.go-lightly.examples.search.google-lamina :as googlam]
    [thornydev.go-lightly.examples.search.google :as goog]
    [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]]
-   [thornydev.go-lightly.examples.webcrawler.webcrawler :as crawl])
+   [thornydev.go-lightly.examples.webcrawler.webcrawler :as crawl]
+   [thornydev.go-lightly.examples.whispers.chinese-whispers :as whisp])
   (:gen-class))
 
 (declare run-programs)
@@ -75,7 +76,7 @@
 
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)
-      
+
       ;; CPU usages is about 4.5% when sleeps are set between
       ;; 10 microseconds up to (and including) 1 millisecond
       ;; 5 millis uses about 1% CPU
@@ -88,15 +89,15 @@
   )
 
 (defn -main [& args]
-  (if (= ":webcrawler" (first args))
-    ;; ---[ concurrency prime sieve ]--- ;;
-    ;; this one should only be run by itself (not with other examples in this case stmt)
-    ;; and can take up to three optional args after :webcrawler
+  (cond
+    ;; ---[ webcrawler ]--- ;;
+    ;; can take up to three optional args after :webcrawler
     ;;  arg1: number of crawler go threads (defaults to 1)
     ;;  arg2: duration (in millis) to run crawling (defaults to 2000)
     ;;  arg3: initial url to crawl (defaults to http://golang.org/ref/)
     ;; example: lein run :webcrawler 16 30000
-    (apply crawl/-main (rest args))
-    (run-programs args))
+   (= ":webcrawler" (first args)) (apply crawl/-main (rest args))
+   (= ":whispers" (first args)) (apply whisp/whispers-main (rest args))
+   :else (run-programs args))
   
   (shutdown-agents))

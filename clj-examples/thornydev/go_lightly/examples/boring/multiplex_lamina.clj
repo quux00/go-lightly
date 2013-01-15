@@ -1,5 +1,6 @@
 (ns thornydev.go-lightly.examples.boring.multiplex-lamina
-  (:require [thornydev.go-lightly.core :refer [go stop with-channel-open]]
+  (:require [thornydev.go-lightly.core :refer [go stop]]
+            [thornydev.go-lightly.examples.util :refer [with-channel-open]]
             [lamina.core :refer :all]))
 
 ;; Note: if you wanted to make this a pure lamina

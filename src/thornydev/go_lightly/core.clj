@@ -56,11 +56,13 @@
 
 ;; ---[ channels and channel fn ]--- ;;
 
+(declare closed?)
+
 (defprotocol GoChannel
   (put [this val] "Put a value on a channel")
-  (take [this] "Take a value from a channel")
-  (size [this] "Returns the number of values on the queue")
-  (peek [this] ""))
+  (take [this] "Take the first value from a channel")
+  (size [this] "Returns the number of values on the channel")
+  (peek [this] "Retrieve, but don't remove, the first element on the channel"))
 
 (deftype Channel [^LinkedTransferQueue q open? prefer?]
   GoChannel
@@ -79,7 +81,7 @@
       (if-let [sq (seq (.toArray q))]
         (str stat-str "<=[ ..." sq "] ")
         (str stat-str "<=[] "))))
-  
+
   Closeable
   (close [this]
     (reset! (.open? this) false)
@@ -91,16 +93,15 @@
     (if @(.open? this)
       (.put q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
-
-  (take [this] (.take q))  
+  (take [this] (.take q))
   (peek [this] (.peek q))
   (size [this] (.size q))
-  
+
   Object
   (toString [this]
     (let [stat-str (when-not @(.open? this) ":closed ")]
       (str stat-str "<=[" (apply str (interpose " " (seq (.toArray q)))) "] ")))
-  
+
   Closeable
   (close [this]
     (reset! (.open? this) false)
@@ -119,7 +120,7 @@
     (if (closed? this)
       ":closed <=[:go-lightly/timeout] "
       "<=[] "))
-  
+
   Closeable
   (close [this]
     (reset! (.open? this) false)
@@ -136,29 +137,31 @@
   (not @(.open? channel)))
 
 (defn prefer [channel]
-  (reset! (.prefer? channel) true))
+  (reset! (.prefer? channel) true)
+  channel)
 
 (defn unprefer [channel]
-  (reset! (.prefer? channel) false))
+  (reset! (.prefer? channel) false)
+  channel)
 
 (defn preferred? [channel]
   @(.prefer? channel))
 
-;; (defn channel
-;;   "If no size is specifies, returns a TransferQueue as a channel.
-;;    If a size is passed is in, returns a bounded BlockingQueue."
-;;   ([] (LinkedTransferQueue.))
-;;   ([capacity] (LinkedBlockingQueue. capacity)))
-
 (defn channel
+  "If no size is specifies, returns a synchronous blocking channel.
+   If a size is passed is in, returns a bounded asynchronous channel."
   ([] (->Channel (LinkedTransferQueue.) (atom true) (atom false)))
-  ([^long capacity] (->BufferedChannel (LinkedBlockingQueue. capacity) (atom true) (atom false))))
+  ([^long capacity]
+     (->BufferedChannel (LinkedBlockingQueue. capacity)
+                        (atom true) (atom false))))
 
 (defn preferred-channel
   ([] (prefer (channel)))
   ([capacity] (prefer (channel capacity))))
 
 (defn timeout-channel
+  "Create a channel that after the specified duration (in
+   millis) will have the :go-lightly/timeout sentinel value"
   [duration-ms]
   (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
     (go& (do (Thread/sleep duration-ms)
@@ -166,15 +169,6 @@
              (close ch)))
     ch))
 
-;; TODO: remove later
-;; (defn timeout-channel
-;;   "Create a channel that after the specified duration (in
-;;    millis) will have the :go-lightly/timeout sentinel value"
-;;   [duration]
-;;   (let [ch (channel)]
-;;     (go& (do (Thread/sleep duration)
-;;              (.put ch :go-lightly/timeout)))
-;;     ch))
 
 ;; ---[ select and helper fns ]--- ;;
 
@@ -207,12 +201,26 @@
        (timed-out? start timeout) :go-lightly/timeout
        :else (recur channels (peek-channels channels))))))
 
+(defn- separate-preferred [channels]
+  (loop [chans channels pref [] reg []]
+    (if (seq chans)
+      (if (preferred? (first chans))
+        (recur (rest chans) (conj pref (first chans)) reg)
+        (recur (rest chans) pref (conj reg (first chans))))
+      [pref reg])))
+
+(defn- filter-ready [chans]
+  (seq (doall (filter #(not (nil? (peek %))) chans))))
+
 (defn- doselect [channels timeout nowait]
-  (let [ready (doall (filterv #(not (nil? (peek %))) channels))]
-    (if (seq ready)
+  (let [[pref-chans reg-chans] (separate-preferred channels)]
+    (if-let [ready (filter-ready pref-chans)]
       (choose ready)
-      (when-not nowait
-        (probe-til-ready channels timeout)))))
+      (if-let [ready (filter-ready reg-chans)]
+        (choose ready)
+        (when-not nowait
+          (probe-til-ready channels timeout)))))
+  )
 
 (defn- parse-nowait-args [channels]
   (if (keyword? (last channels))
