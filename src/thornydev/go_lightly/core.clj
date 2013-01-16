@@ -190,7 +190,7 @@
     (when-let [ready-list (filter-ready reg-chans)]
       (choose ready-list))))
 
-(defn probe-til-ready [pref-chans reg-chans timeout]
+(defn- probe-til-ready [pref-chans reg-chans timeout]
   (let [start (now)]
     (loop [ready-chan nil mcsec 200]
       (cond
@@ -200,7 +200,7 @@
                  (recur (attempt-select pref-chans reg-chans)
                         (min 1500 (+ mcsec 25))))))))
 
-(defn separate-preferred [channels]
+(defn- separate-preferred [channels]
   (loop [chans channels pref [] reg []]
     (if (seq chans)
       (if (preferred? (first chans))
@@ -208,7 +208,7 @@
         (recur (rest chans) pref (conj reg (first chans))))
       [pref reg])))
 
-(defn doselect [channels timeout nowait]
+(defn- doselect [channels timeout nowait]
   (let [[pref-chans reg-chans] (separate-preferred channels)]
     (if-let [ready (attempt-select pref-chans reg-chans)]
       ready
