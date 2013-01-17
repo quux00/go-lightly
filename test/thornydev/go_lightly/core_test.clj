@@ -67,7 +67,8 @@
       (go (put ch2 2))
       (is (= 1 (take ch1)))
       (is (= 2 (take ch2)))
-      (stop))))
+      ))
+  (stop))
 
 (deftest test-timeout-channel
   (testing "timeout channel has :go-lightly/timeout enqueued if nothing enqueued"
@@ -244,10 +245,84 @@
         (dotimes [_ 10]
           (let [sval (select ch3 ch1 ch2)]
             (is (or (= :foo sval)
-                    (= :quux sval)))))
+                    (= :quux sval))))))))
+  (stop))
+
+
+(deftest test-drain
+  (testing "buffered channel"
+    (testing "drain removes and returns all enqueued values"
+      (let [ch (channel 50)]
+        (put-20 ch :foo)
+        (is (= 20 (size ch)))
+        (let [seqch (drain ch)]
+          (is (= 20 (count seqch)))
+          (is (= :foo (first seqch) (last seqch))))
+        (is (= (zero? (size ch)))))))
+
+  (testing "draininng an empty channel returns empty seq"
+    (is (empty? (drain (channel 2)))))
+
+  (testing "synchronous channel"
+    (testing "drain removes first value"
+      (let [ch (channel)]
+        (go (put-20 ch))
+        (with-timeout 50
+          (while (nil? (peek ch))))
+
+        (let [seqch (drain ch)]
+          (is (= 1 (count seqch)))
+          (is (= 0 (first seqch))))
+
+        (let [seqch (drain ch)]
+          (is (= 1 (count seqch)))
+          (is (= 1 (first seqch))))
         )
       )
+    (testing "draining a sync channel with no pending put returns empty seq"
+      (is (empty? (drain (channel)))))
     )
-  )
+  (stop))
 
-(println (run-tests 'thornydev.go-lightly.core-test))
+(deftest test-lazy-drain
+  (testing "buffered channel"
+    (testing "lazy-drain removes and returns all enqueued values"
+      (let [ch (channel 50)]
+        (put-20 ch :foo)
+        (is (= 20 (size ch)))
+        (let [seqch (lazy-drain ch)]
+          (is (= 20 (count seqch)))
+          (is (= :foo (first seqch) (last seqch))))
+        (is (= (zero? (size ch)))))))
+
+  (testing "lazy-draining an empty channel returns empty seq"
+    (is (empty? (drain (channel 2)))))
+
+  (testing "synchronous channel"
+    (testing "behaving is partially undefined: returns at least one element if channel is not empty"
+      (let [ch (channel)]
+        (go (put-20 ch))
+        (with-timeout 50
+          (while (nil? (peek ch))))
+
+        (let [seqch (lazy-drain ch)]
+          (is (<= 1 (count seqch)))
+          (is (= 0 (first seqch))))))
+
+    (testing "draining a sync channel with no pending put returns empty seq"
+      (is (empty? (lazy-drain (channel)))))
+    )
+  (testing "lazy-drain with closed buffered channel"
+    (testing "lazy-drain removes and returns all enqueued values from closed channel"
+      (let [ch (channel 50)]
+        (put-20 ch :foo)
+        (close ch)
+        (is (= 20 (size ch)))
+        (let [seqch (lazy-drain ch)]
+          (is (= 20 (count seqch)))
+          (is (= :foo (first seqch) (last seqch))))
+        (is (= (zero? (size ch)))))))
+  (stop))
+
+;; (println (run-tests 'thornydev.go-lightly.core-test))
+

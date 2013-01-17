@@ -126,11 +126,6 @@
     (reset! (.open? this) false)
     nil))
 
-;; TODO: doesn't work - why not?
-;; (defmethod print-method BufferedChannel
-;;   [ch w]
-;;   (print-method '<- w) (print-method (seq (.q ch) w) (print-method '-< w)))
-
 (defn close [channel] (.close channel))
 
 (defn closed? [channel]

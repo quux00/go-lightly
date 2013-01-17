@@ -3,7 +3,7 @@
    [thornydev.go-lightly.examples.boring.boringv1 :as v1]
    [thornydev.go-lightly.examples.boring.generator-kachayev :as genk]
    [thornydev.go-lightly.examples.boring.generator-sq :as gensq]
-   [thornydev.go-lightly.examples.boring.generator-tq :as gentq]
+   [thornydev.go-lightly.examples.boring.generator :as gengo]
    [thornydev.go-lightly.examples.boring.generator-lamina :as genlam]
    [thornydev.go-lightly.examples.boring.multiplex-kachayev :as mk]
    [thornydev.go-lightly.examples.boring.multiplex :as plex]
@@ -22,9 +22,9 @@
   (doseq [arg args]
     (case (keyword (subs arg 1))
       ;; ---[ "boring" variations ]--- ;;
-      :gen-tq1 (gentq/single-generator)
-      :gen-tq2 (gentq/multiple-generators)
-      :gen-amp (gentq/multiple-generators&)
+      :gen1 (gengo/single-generator)
+      :gen2 (gengo/multiple-generators)
+      :gen-amp (gengo/multiple-generators&)
 
       :gen-sq1 (gensq/single-generator)
       :gen-sq2 (gensq/multiple-generators)
@@ -77,13 +77,6 @@
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)
 
-      ;; CPU usages is about 4.5% when sleeps are set between
-      ;; 10 microseconds up to (and including) 1 millisecond
-      ;; 5 millis uses about 1% CPU
-      ;; 10 millis uses about 0.7% CPU
-      :sleep (do (println "starting")
-                 (dotimes [i 14500] (Thread/sleep 0 10000)))
-
       (println "WARN: argument not recognized"))
     (println "------------------"))
   )
@@ -97,7 +90,13 @@
     ;;  arg3: initial url to crawl (defaults to http://golang.org/ref/)
     ;; example: lein run :webcrawler 16 30000
    (= ":webcrawler" (first args)) (apply crawl/-main (rest args))
+
+   ;; ---[ chinese-whispers ]--- ;;
+   ;; second arg is number of threads to start
+   ;; if you give these a lot of threads it takes a while to shut down
+   ;; after the value prints out
    (= ":whispers" (first args)) (apply whisp/whispers-main (rest args))
+   (= ":whispers-as-go" (first args)) (apply whisp/whispers-main (rest args))
    :else (run-programs args))
   
   (shutdown-agents))
