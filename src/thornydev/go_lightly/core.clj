@@ -59,10 +59,11 @@
 (declare closed?)
 
 (defprotocol GoChannel
-  (put [this val] "Put a value on a channel")
+  (put [this val] "Put a value on a channel. May or may not block depending on type and circumstances.")
   (take [this] "Take the first value from a channel")
   (size [this] "Returns the number of values on the channel")
-  (peek [this] "Retrieve, but don't remove, the first element on the channel"))
+  (peek [this] "Retrieve, but don't remove, the first element on the channel")
+  (clear [this] "Remove all elements from the channel without returning them"))
 
 (deftype Channel [^LinkedTransferQueue q open? prefer?]
   GoChannel
@@ -74,6 +75,7 @@
   (take [this] (.take q))
   (peek [this] (.peek q))
   (size [this] 0)
+  (clear [this] (.clear q))
 
   Object
   (toString [this]
@@ -96,7 +98,8 @@
   (take [this] (.take q))
   (peek [this] (.peek q))
   (size [this] (.size q))
-
+  (clear [this] (.clear q))
+  
   Object
   (toString [this]
     (let [stat-str (when-not @(.open? this) ":closed ")]
@@ -114,6 +117,8 @@
   (take [this] (.take q))
   (peek [this] (.peek q))
   (size [this] (.size q))
+  (clear [this] (throw (UnsupportedOperationException.
+                        "Cannot clear a TimeoutChannel")))
 
   Object
   (toString [this]
@@ -125,11 +130,6 @@
   (close [this]
     (reset! (.open? this) false)
     nil))
-
-;; TODO: doesn't work - why not?
-;; (defmethod print-method BufferedChannel
-;;   [ch w]
-;;   (print-method '<- w) (print-method (seq (.q ch) w) (print-method '-< w)))
 
 (defn close [channel] (.close channel))
 
