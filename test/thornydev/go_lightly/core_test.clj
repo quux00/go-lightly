@@ -10,7 +10,10 @@
     (Thread/sleep (rand-int 125))
     (put ch n)))
 
-(defn- put-20 [& args]
+(defn- put-20
+  "puts the provided seconds arg 20 times into the channel
+   if no second arg provided, then puts the series 0 .. 19"
+  [& args]
   (let [[ch value] args]
     (dotimes [i 20]
       (put ch (or value i)))))
@@ -30,6 +33,7 @@
     (let [ch1 (channel) ch2 (channel)]
       (go& (put ch1 1))
       (go& (put ch2 2))
+      (Thread/sleep 50)
       (is (= 0 (size ch1)))
       (is (= 0 (size ch2)))
       (is (= 1 (peek ch1)))
@@ -112,10 +116,11 @@
       (go (put-with-sleeps-track-enqueues ch1 qlog))
       (go (put-with-sleeps-track-enqueues ch2 qlog))
       (go (put-with-sleeps-track-enqueues ch3 qlog))
-      (Thread/sleep 10)
       (let [results (for [i (range 10)]
                       (select ch1 ch2 ch3))]
         (is (= 10 (count results)))
+        (with-timeout 100
+          (while (not= 10 (count @qlog))))
         (is (= (set results) @qlog)))))
 
   (testing "test with mix of buffered and sync channels and go routines"
@@ -201,6 +206,7 @@
       (is (= nil (peek ch)))))
   (stop))
 
+
 (deftest test-preferred-channel
   (testing "prefered channels are always read from first if values present"
     (let [ch1 (channel)
@@ -213,7 +219,6 @@
       (put-20 ch2)  ;; values 0 .. 19
       (put-20 ch3 :quux)
       
-
       (testing "order of channels in select doesn't matter"
         (dotimes [i 20]
           (is (= i (select ch1 ch2 ch3))))
@@ -221,32 +226,121 @@
         (put-20 ch2)
         (dotimes [i 20]
           (is (= i (select ch2 ch3 ch1)))))
-      ;; now preferred channel is empty, so unpreferred is read from
 
-      ;; TODO: this doesn't actually test what we want => want to make sure
-      ;; both values are seen 
-      (dotimes [_ 10]
-        (let [sval (select ch3 ch1 ch2)]
-          (is (or (= :foo sval)
-                  (= :quux sval)))))
+      ;; now preferred channel is empty, so unpreferred is read from
+      (loop [cnt 1000 selected #{:go-lightly/timeout}]
+        (cond
+         (zero? cnt) (is false "After 1000 checks did not see entry of each channel")
+         (= #{:foo :quux :go-lightly/timeout} selected) (is true)
+         :else (recur (dec cnt)
+                      (conj selected (select-timeout 20 ch3 ch1 ch2)))))
+      
       (testing "make a channel a prefered after creating"
         ;; prefer modifies the channel in place
         (prefer ch3)
         (is (preferred? ch3))
         (dotimes [i 10]
-          (is (= :quux (select ch1 ch2 ch3))))
-        )
-      (testing "make channel unpreferred should not allow equal choice between remaining non-empty channels"
+          (is (= :quux (select ch1 ch2 ch3)))))
+
+      (testing "make channel unpreferred should now allow equal
+                choice between remaining non-empty non-preferred channels"
+        ;; unprefer modifies the channel in place
         (unprefer ch3)
         (is (not (preferred? ch3)))
 
-        ;; TODO: this doesn't actually test what we want => want to make sure
-        ;; both values are seen 
-        (dotimes [_ 10]
-          (let [sval (select ch3 ch1 ch2)]
-            (is (or (= :foo sval)
-                    (= :quux sval))))))))
+        (loop [cnt 1000 selected #{:go-lightly/timeout}]
+          (cond
+           (zero? cnt) (is false "After 1000 checks did not see entry of each channel")
+           (= #{:foo :quux :go-lightly/timeout} selected) (is true)
+           :else (recur (dec cnt)
+                        (conj selected (select-timeout 20 ch2 ch1 ch3))))))))
   (stop))
+
+
+(deftest test-channel->seq-and-channel-vec
+  (testing "buffered channels"
+    (testing "channel->seq returns seq of all elements on channel without removing them"
+      (let [ch1 (channel 30)]
+        (put-20 ch1) ;; puts 0 .. 19
+        (is (= 20 (size ch1)))
+        (let [chseq (channel->seq ch1)]
+          (is (seq? chseq))
+          (is (= 20 (count chseq)))
+          (is (= #{1 3 5 7 9 11 13 15 17 19}
+                 (set (filter odd? chseq))))
+          )
+        ;; test not removed from channel
+        (is (= 20 (size ch1)))))
+
+    (testing "channel->vec returns vector of all elements on channel without removing them"
+      (let [ch1 (channel 30)]
+        (put-20 ch1) ;; puts 0 .. 19
+        (is (= 20 (size ch1)))
+        (let [chvec (channel->vec ch1)]
+          (is (vector? chvec))
+          (is (= 20 (count chvec)))
+          (is (= #{1 3 5 7 9 11 13 15 17 19}
+                 (set (filter odd? chvec))))
+          )
+        ;; test not removed from channel
+        (is (= 20 (size ch1)))))
+
+    (testing "channel->vec and channel->seq return the same values"
+      (let [ch1 (channel 30)]
+        (put-20 ch1) ;; puts 0 .. 19
+        (is (= 20 (size ch1)))
+        (let [chvec (channel->vec ch1)
+              chseq (channel->seq ch1)]
+          (is (= (seq chvec) chseq)))))
+
+    (testing "channel->vec and channel->seq return empty coll if channel is empty"
+      (let [ch (channel 4)]
+        (is (= 0 (size ch)))
+        (is (empty? (channel->vec ch)))
+        (is (empty? (channel->seq ch)))))
+
+    (testing "channel->vec and channel->seq return all elements on a closed channel"
+      (let [ch (channel 30)]
+        (put-20 ch) ;; puts 0 .. 19
+        (close ch)
+        (is (= 20 (size ch)))
+        (let [chvec (channel->vec ch)
+              chseq (channel->seq ch)]
+          (is (= 20 (count chseq)))
+          (is (= #{1 3 5 7 9 11 13 15 17 19}
+                 (set (filter odd? chseq))))
+          (is (= (seq chvec) chseq)))
+        ;; test not removed from channel
+        (is (= 20 (size ch))))))
+
+  (testing "synchronous channels"
+    (testing "channel->seq and channel->vec return the first/only element pending on the queue"
+      (let [ch (channel)]
+        (go (put-20 ch)) ;; puts 0 .. 19
+        (with-timeout 50 ;; wait for first element to be on the channel
+          (while (nil? (peek ch))))
+
+        (let [chseq (channel->seq ch)]
+          (is (= 1 (count chseq)))
+          (is (= 0 (first chseq))))
+        
+        (let [chvec (channel->vec ch)]
+          (is (= 1 (count chvec)))
+          (is (= 0 (first chvec))))
+
+        (is (= 0 (peek ch)))))
+    (testing "channel->seq and channel->vec return empty seq when sync channel is closed"
+      (let [ch (channel)]
+        (go (put-20 ch)) ;; puts 0 .. 19
+        (with-timeout 50 ;; wait for first element to be on the channel
+          (while (nil? (peek ch))))
+        (close ch)
+        ;; this is failing - why?
+        (let [chseq (channel->seq ch)
+              chvec (channel->vec ch)]
+          (is (empty? chseq))
+          (is (empty? chvec)))
+        (is (nil? (peek ch)))))))
 
 
 (deftest test-drain
@@ -283,6 +377,7 @@
       (is (empty? (drain (channel)))))
     )
   (stop))
+
 
 (deftest test-lazy-drain
   (testing "buffered channel"
@@ -325,4 +420,3 @@
   (stop))
 
 ;; (println (run-tests 'thornydev.go-lightly.core-test))
-
