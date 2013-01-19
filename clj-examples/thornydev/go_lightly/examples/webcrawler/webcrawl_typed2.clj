@@ -99,7 +99,7 @@
   (try
     (loop []
       (process-url (go/take url-channel))
-      (let [msg (.poll crawler-status-channel)]
+      (let [msg (go/select-nowait crawler-status-channel)]
         (if (nil? msg)
           (recur)
           (.countDown (:latch msg)))))
@@ -119,11 +119,13 @@
   "Grabs the next map value off freq-channel, merges it with the
    master map (msubtots) and returns an updated map."
   [msubtots]
-  (if-let [freqs (go/select-timeout 100 freqs-channel)]
-    (merge-with + msubtots freqs)
-    msubtots)
-  ;; (if-let [freqs (.poll freqs-channel 100 TimeUnit/MILLISECONDS)]
-  ;;   (merge-with + msubtots freqs)
+  (let [freqs (go/select-timeout 100 freqs-channel)]
+    (if (= :go-lightly/timeout freqs)
+      msubtots
+      (merge-with + msubtots freqs)))
+  ;; (if-let [freqs (.poll (.q freqs-channel) 100 java.util.concurrent.TimeUnit/MILLISECONDS)]
+  ;;   (do (println msubtots)
+  ;;       (merge-with + msubtots freqs))
   ;;   msubtots)
   )
 
@@ -151,7 +153,9 @@
           (do (reset! word-frequencies (drain-freqs-channel subtots))
               (go/put (:channel msg) id))
           (recur (freq-cycle subtots)))))
-    (catch Exception e (println "reduce-freqs ERROR" e))))
+    (catch Exception e
+      (println "reduce-freqs ERROR" e)
+      (println (.printStackTrace e)))))
 
 (defn start-frequency-reducer
   "Spawns a go-lightly routine for one frequency reducer that will process
