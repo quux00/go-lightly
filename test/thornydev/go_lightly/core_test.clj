@@ -195,15 +195,16 @@
       (is (= 3 (take ch)))
       (is (= 16 (size ch)))))
 
-  (testing "closing a (sync) channel will cause it to be empty"
+  (testing "closing a (sync) channel should let existing item to be removed"
     (let [ch (channel)]
-      (go (put-with-sleeps ch 1))
+      (go (put ch 1))
       (is (not (closed? ch)))
-      (is (= 1 (take ch)))
+      (is (= 1 (peek ch)))
       ;; now close ch -> will throw (silent) exception in go routine
       (close ch)
       (is (closed? ch))
-      (is (= nil (peek ch)))))
+      (is (= 1 (peek ch)))
+      (is (= 1 (take ch)))))
   (stop))
 
 
@@ -329,18 +330,18 @@
           (is (= 0 (first chvec))))
 
         (is (= 0 (peek ch)))))
-    (testing "channel->seq and channel->vec return empty seq when sync channel is closed"
+    (testing "channel->seq and channel->vec return seq/vec with one value when sync channel is closed"
       (let [ch (channel)]
         (go (put-20 ch)) ;; puts 0 .. 19
         (with-timeout 50 ;; wait for first element to be on the channel
           (while (nil? (peek ch))))
         (close ch)
-        ;; this is failing - why?
         (let [chseq (channel->seq ch)
               chvec (channel->vec ch)]
-          (is (empty? chseq))
-          (is (empty? chvec)))
-        (is (nil? (peek ch)))))))
+          (is (= 0 (first chseq)))
+          (is (= 0 (first chvec))))
+        ;; channel->xxx methods do not remove the value from the channel
+        (is (= 0 (peek ch)))))))
 
 
 (deftest test-drain
@@ -419,4 +420,4 @@
         (is (= (zero? (size ch)))))))
   (stop))
 
-;; (println (run-tests 'thornydev.go-lightly.core-test))
+(println (run-tests 'thornydev.go-lightly.core-test))

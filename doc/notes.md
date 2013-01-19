@@ -1,5 +1,20 @@
 # Introduction to go-lightly
 
+### todo
+
+X Add more type hinting to core
+* Finish blog comparing webcrawler implementations
+- Finish revised README
+- Tag existing GitHub repo and publish that tag on blog entries 1-5
+* Benchmark webcrawler-interop vs. webcrawler-typedChannels
+* jvisualvm analysis of Clojure chinese whispers example
+* Publish TypedChannels version to GitHub
+* Learn how to package for and publish to Clojars
+* Restructure go-lightly into go-lightly and go-lightly-examples lein projects?
+* Publish answer on Stackoverflow about doing Go concurrency in Clojure: link to go-lightly TypedChannel version out
+* Fix font on blogs (color older entries and get the font face correct so looks right on Windows)
+* Start go-lightly wiki on GitHub to see how it works and how to link to it from the README
+
 ### Criterium benchmarks
 * google-1 benchmarks
  

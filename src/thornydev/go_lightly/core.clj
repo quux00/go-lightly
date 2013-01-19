@@ -220,7 +220,8 @@
     (split-at (dec (count channels)) channels)
     [channels nil]))
 
-;; public select fns
+
+;; ---[ public select fns ]--- ;;
 
 (defn select
   "Select one message from the channels passed in."

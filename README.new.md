@@ -154,11 +154,69 @@ You use buffered channels whenever one or more threads needs to be pushing a str
 
 ## select
 
-In Go the select statement is switch-like control structure that is very important to writing idiomatic Go concurrent applications.  In fact, Rob Pike, in his Google IO 2012 presentation on Go said:
+Go comes with a ready-made control structure called select. It provides a shorthand way to specify how to deal with multiple channels, as well as allow for timeouts and non-blocking behavior (via a "default" clause). It looks like a switch/case statement in C-based languages, but is different in that all paths involving a channel are evaluated, rather than just picking the first one that is ready.
+
+The select statement is a central element in writing idiomatic Go concurrent applications.  In fact, Rob Pike, in his Google IO 2012 presentation on Go said:
 
     "The select statement is a key part of why concurrency is built into Go as features of the language, rather than just a library. It's hard to do control structures that depend on libraries."
 
+Let's look at an example:
+
+    select {
+    case v1 := <-c1:
+        fmt.Printf("received %v from c1\n", v1)
+    case v2 := <-c2:
+        fmt.Printf("received %v from c2\n", v2)
+    }
+
+This select evaluates two channels and there are four possible scenarios:
+
+1. c1 is ready to give a message, but c2 is not. The message from c1 is read into the variable v1 and the code clause for that first case is executed.
+2. c2 is ready to give a message, but c1 is not. v2 then is assigned to the value read from c2 and its code clause is executed.
+3. Both c1 and c2 are ready to give a message. One of them is randomly chosen to execute and the other does not execute. Note this means that you cannot depend on the order your clauses will be executed in.
+4. Neither c1 nor c2 are ready to give a message. The select will block until the first one is ready, at which point it will be read from the channel and execute the corresponding code clause.
+
+`select` statements in Go can also have timeouts or a default clause that executes immediately if none of the other cases are ready.  Examples are provided in the wiki.
+
 The go-lightly library provides select-like functionality, but not exactly like Go does.  At present go-lightly's select is a function (or rather a suite of functions), not a control structure.  However, with Clojure macros, a control structure version could certainly be written if it is warranted.
+
+The select function is go-lightly is modeled after the sync function (discussed in [one of my go-lightly blog entries](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html) in more detail).  You pass one or more channels and/or buffered channels and it performs the same logic outlined above to return the value from the next channel when it is available.
+
+    (def ch (go/channel))
+    (def buf-ch1 (go/channel 100))
+    (def buf-ch2 (go/channel Integer/MAX_VALUE))
+    
+    (let [msg (go/select ch buf-ch1 buf-ch1)]
+      ;; do something with first message result here
+      )
+
+If you don't want to block until a channel has a value, use `select-nowait`, which takes an optional return sentinel value if no channel is ready for reading:
+
+user=> (select-nowait ch1 ch2 ch3 :bupkis)
+:bupkis
+
+## Timeout operations on channel read/writes/selects
+
+###### <<< Need to fill in with Go timeout options >>> #######
+
+If you want to block with a timeout, you have three options:
+
+1. use `select-timeout`, which takes the timeout duration (in millis) as the first arg:
+
+    (go/select-timeout 1000 ch1 ch2 ch3)
+
+2. use a TimeoutChannel, which is a channel that will have a sentinel timeout value after the prescribed number of milliseconds
+        
+    (go/select ch1 ch2 ch3 (go/timeout-channel 1000))
+
+3. use the `with-timeout` macro to wrap the whole operation and quit if it hasn't finished before then
+
+    (go/with-timeout 1000
+      (let [msg (go/select ch1 ch2 ch3)]
+        ;; do something with first message result here
+        ))
+
+The usage scenarios around these three options are discussed in the wiki.
 
 
 
@@ -166,3 +224,28 @@ The go-lightly library provides select-like functionality, but not exactly like 
 
 When working with Go-style channels, it is very important to think through ordering of operations.  The promise of CSP-style concurrency is that you can apply standard linear thinking to concurrent applications.  You have to carefully consider where you need synchornization and where you do not.  That means paying attention to what operations will block and which will not.  Even though you don't have to think about locks, mutexes and semaphores, you can still code yourself into race conditions and deadlocks with Go channels and Go routines if you reason incorrectly.
 
+
+
+## A note on namespaces
+
+The GoChannel protocol defines two method names, `take` and `peek` that conflict with functions in clojure.core.  I considered for quite a while what to call the "send" and "receive" and "look-without-taking" operations.  I decided against using `send` because that is the core operation on agents, which are a primary concurrency tool in Clojure, and I decided that would engender worse confusion.  I also could have put a star after all the function names like Zach Tellman does in the [lamina library](https://github.com/ztellman/lamina), but decided against it as well.
+
+So to handle the name conflict, you have two options.  If you want to use or refer the entire go-lightly.core namespace into your namespace, you'll need to tell Clojure not to load clojure.core/take and clojure.core/peek:
+
+    (ns my.namespace
+      (:refer-clojure :exclude [peek take])
+      (:require [thornydev.go-lightly.core :refer :all]))
+        
+Or you can simply use a namespace prefix to all the go-lightly.core functions:
+
+    (ns thornydev.go-lightly.examples.webcrawler.webcrawl-typed
+      (:require [thornydev.go-lightly.core :as go]))
+    
+    (defn stop-frequency-reducer []
+      (go/with-timeout 2000
+        (let [back-channel (go/channel)]
+          (go/put freq-reducer-status-channel {:msg :stop
+                                               :channel back-channel})
+          (go/take back-channel))))
+
+The latter is the option I recommend and show in my examples.
