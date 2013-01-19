@@ -195,7 +195,7 @@
     (loop [ready-chan nil mcsec 200]
       (cond
        ready-chan ready-chan
-       (timed-out? start timeout) :go-lightly/timeout
+       (timed-out? start timeout) nil
        :else (do (Thread/sleep 0 mcsec)
                  (recur (attempt-select pref-chans reg-chans)
                         (min 1500 (+ mcsec 25))))))))
@@ -240,14 +240,11 @@
 (defn select-timeout
   "Like select, selects one message from the channel(s) passed in
    with the same behavior except that a timeout is in place that
-   if no message becomes available before the timeout expires, a
-   :go-lightly/timeout sentinel message will be returned."
+   if no message becomes available before the timeout expires, nil
+   will be returned."
   ([timeout chan]
-     (let [result (.poll (.q chan) timeout TimeUnit/MILLISECONDS)]
-       (if (nil? result)
-         :go-lightly/timeout
-         result)))
-
+     (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
+  
   ([timeout chan & channels]
      (doselect (conj channels chan) timeout nil)))
 

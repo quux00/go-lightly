@@ -144,7 +144,7 @@
 (deftest test-select-timeout
   (testing "single channel"
     (let [ch (channel)]
-      (is (= :go-lightly/timeout (select-timeout 50 ch)))
+      (is (nil? (select-timeout 50 ch)))
       (go (put ch :foo))
       (with-timeout 50 ;; wait for element to be on the channel
         (while (nil? (peek ch))))
@@ -152,7 +152,7 @@
   
   (testing "is OK to put false on a channel, but not nil"
     (let [ch (channel 10)]
-      (is (= :go-lightly/timeout (select-timeout 50 ch)))
+      (is (nil? (select-timeout 50 ch)))
       (put ch false)
       (is (= false (select-timeout 50 ch)))
       ;; you can't actually put nil on a LinkedBlockingQueue (or a LinkedTransferQueue)
@@ -166,7 +166,7 @@
       (loop [cnt 1000 selected #{}]
         (cond
          (zero? cnt) (is false "After 1000 did not see entry of each channel")
-         (= #{1 2 :go-lightly/timeout} selected) (is true)
+         (= #{1 2 nil} selected) (is true)
          :else (recur (dec cnt)
                       (conj selected (select-timeout timeout ch1 ch2)))))))
   (stop))
@@ -266,10 +266,10 @@
           (is (= i (select ch2 ch3 ch1)))))
 
       ;; now preferred channel is empty, so unpreferred is read from
-      (loop [cnt 1000 selected #{:go-lightly/timeout}]
+      (loop [cnt 1000 selected #{nil}]
         (cond
          (zero? cnt) (is false "After 1000 checks did not see entry of each channel")
-         (= #{:foo :quux :go-lightly/timeout} selected) (is true)
+         (= #{:foo :quux nil} selected) (is true)
          :else (recur (dec cnt)
                       (conj selected (select-timeout 20 ch3 ch1 ch2)))))
       
