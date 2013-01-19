@@ -2,7 +2,7 @@
 
 ## Overview
 
-Go-lightly is a Clojure library that facilitates buildling concurrent programs in Clojure in the style built into the Go language.  Go concurrency is based on the [Communicating Sequential Processes](http://en.wikipedia.org/wiki/Communicating_sequential_processes) (CSP) model of programming.
+Go-lightly is a Clojure library that facilitates building concurrent programs in Clojure in the style built into the Go language.  Go concurrency is based on the [Communicating Sequential Processes](http://en.wikipedia.org/wiki/Communicating_sequential_processes) (CSP) model of programming.
 
 The core concepts of the Go concurrency programming are:
 
@@ -15,9 +15,9 @@ The core concepts of the Go concurrency programming are:
 The go-lightly library provides all of these (plus a few extras) by wrapping features already provided in the JVM and Clojure.
 
 
-## Compatibility Notes, Minimal Requirements and Depedencies
+## Compatibility Notes, Minimal Requirements and Dependencies
 
-Go-lightly only works with Java 7 and later in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implemento Go synchronous channels.
+Go-lightly only works with Java 7 and later in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
 Go-lightly has been tested with Clojure 1.3, 1.4 and 1.5 (**>>TODO: make this true<<**) and works with all of those, as long as Java 7 is provided.
 
@@ -48,9 +48,9 @@ Like `go`, Clojure's `future` runs the function given to it in another thread.  
 
 1. `future` pushes onto a thread from the Clojure agent thread pool where it remains until the future is finished.  So Clojure futures are not a lightweight multiplexed routine.  This is a limitation of the JVM environment and as far as I know there is not a way to emulate this aspect of Go routines on the JVM.  (If any knows differently, please let me know!)
 
-2. The thread used by `future` is not a daemon-thread, where as Go routines are deamons.  In Go, when the main thread (as defined by the thread running through the `main` function) ends, any Go routines still running are immediately shut down.  Thus, you can span a Go routine that never shuts down or is hung in a blocking operation and the program will still exit gracefully.  This not true of Clojure future threads.  The go-lightly library provides some utilities to assist with this.
+2. The thread used by `future` is not a daemon-thread, where as Go routines are daemons.  In Go, when the main thread (as defined by the thread running through the `main` function) ends, any Go routines still running are immediately shut down.  Thus, you can span a Go routine that never shuts down or is hung in a blocking operation and the program will still exit gracefully.  This not true of Clojure future threads.  The go-lightly library provides some utilities to assist with this.
 
-3. `future` returns a Future whereas invoking go does not.  If you need to wait on a go routine to finish or compute some value you have to use a channel for communcation (or, (not recommended) set some shared state for other thread to check).  With a Future you can wait on it to finish and return a value to you directly.
+3. `future` returns a Future whereas invoking go does not.  If you need to wait on a go routine to finish or compute some value you have to use a channel for communication (or, (not recommended) set some shared state for other thread to check).  With a Future you can wait on it to finish and return a value to you directly.
 
 The go-lightly library provides a `go` function that internally invokes `future`, but ignores the Future that it returns.
 
@@ -87,7 +87,7 @@ Likewise, any receive on the channel blocks until a send is done by another thre
     // Clojure version
     (let [myval (go/take ch)]
 
-In Go parlance, these are simply "channels", while nonblocking asynchronous channels are called "buffered channels", so I will use those terms from here forward.
+In Go parlance, these are simply "channels", while non-blocking asynchronous channels are called "buffered channels", so I will use those terms from here forward.
 
 The java.util.concurrent package includes a number of very nice concurrent queues, which are a superset of Go channels.  In particular, SynchronousQueue and the newly introduced LinkedTransferQueue can be used like Go channels.  It worth emphasizing that they also have functionality that Go channels do not provide.  The Go channels were intentionally designed to be minimally featured - they are constricted to be used in particular ways that facilitate the Go style of concurrent programming.  The go-lightly library similarly simplifies Java's TransferQueue to a minimal set of supported operations.  However, if you really need it, you can always grab the embedded TransferQueue out of the go-lightly channel and work with it directly through Clojure's Java interop features.
 
@@ -198,8 +198,29 @@ user=> (select-nowait ch1 ch2 ch3 :bupkis)
 ## Timeout operations on channel read/writes/selects
 
 ###### <<< Need to fill in with Go timeout options >>> #######
+In Go, timeouts are done with a timeout channel, which is returned by a call to `time.After`. You can use a timeout channel to timeout an individual select:
 
-If you want to block with a timeout, you have three options:
+    select {
+    case m := <-ch:
+        handle(m)
+    case <-time.After(1 * time.Minute):
+        fmt.Println("timed out")
+    }
+
+Or you can use one to timeout a series of selects in a loop:
+
+    timeout := time.After(1 * time.Second)
+    for {
+        select {
+        case s := <-c:
+            fmt.Println(s)
+        case <-timeout:
+            fmt.Println("timed out")
+            return
+        }
+    }
+
+The latter option uses an explicit return statement that is not compatible with Clojure or a functional style of program, so the go-lightly provides other idioms.  In go-lightly, if you want to block with a timeout, you have three options:
 
 1. use `select-timeout`, which takes the timeout duration (in millis) as the first arg:
 
@@ -222,8 +243,10 @@ The usage scenarios around these three options are discussed in the wiki.
 
 ## Misc Notes to put somewhere
 
-When working with Go-style channels, it is very important to think through ordering of operations.  The promise of CSP-style concurrency is that you can apply standard linear thinking to concurrent applications.  You have to carefully consider where you need synchornization and where you do not.  That means paying attention to what operations will block and which will not.  Even though you don't have to think about locks, mutexes and semaphores, you can still code yourself into race conditions and deadlocks with Go channels and Go routines if you reason incorrectly.
+When working with Go-style channels, it is very important to think through ordering of operations.  The promise of CSP-style concurrency is that you can apply standard linear thinking to concurrent applications.  You have to carefully consider where you need synchronization and where you do not.  That means paying attention to what operations will block and which will not.  Even though you don't have to think about locks, mutexes and semaphores, you can still code yourself into race conditions and deadlocks with Go channels and Go routines if you reason incorrectly.
 
+
+You can put `false` on a Channel or BufferedChannel, but you cannot put `nil`.  The underlying LinkedBlockingQueue and LinkedTransferQueue will throw a NullPointerException if you try.  This allows the go-lightly library to interpret `nil` from a take, peek or select as "nothing to be read", whereas false is an actual value on the queue that will be returned from one of these read methods.
 
 
 ## A note on namespaces

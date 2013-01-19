@@ -142,40 +142,77 @@
   (stop))
 
 (deftest test-select-timeout
-  (let [ch1 (channel) ch2 (channel) timeout 25]
-    (go (put-with-sleeps ch1 1))
-    (go (put-with-sleeps ch2 2))
-    (loop [cnt 1000 selected #{}]
+  (testing "single channel"
+    (let [ch (channel)]
+      (is (= :go-lightly/timeout (select-timeout 50 ch)))
+      (go (put ch :foo))
+      (with-timeout 50 ;; wait for element to be on the channel
+        (while (nil? (peek ch))))
+      (is (= :foo (select-timeout 50 ch)))))
+  
+  (testing "is OK to put false on a channel, but not nil"
+    (let [ch (channel 10)]
+      (is (= :go-lightly/timeout (select-timeout 50 ch)))
+      (put ch false)
+      (is (= false (select-timeout 50 ch)))
+      ;; you can't actually put nil on a LinkedBlockingQueue (or a LinkedTransferQueue)
+      ;; the Java class throws an NPE
+      (is (thrown? NullPointerException (put ch nil)))))
+  
+  (testing "multiple channels"
+    (let [ch1 (channel) ch2 (channel) timeout 25]
+      (go (put-with-sleeps ch1 1))
+      (go (put-with-sleeps ch2 2))
+      (loop [cnt 1000 selected #{}]
         (cond
          (zero? cnt) (is false "After 1000 did not see entry of each channel")
          (= #{1 2 :go-lightly/timeout} selected) (is true)
          :else (recur (dec cnt)
-                      (conj selected (select-timeout timeout ch1 ch2))))))
+                      (conj selected (select-timeout timeout ch1 ch2)))))))
   (stop))
 
 
 (deftest test-select-nowait
-  (let [ch1 (channel) ch2 (channel) ch3 (channel) ch4 (channel 10)]
-    (let [results (set
-                   (doall
-                    (for [_ (range 10)]
-                      (select-nowait ch1 ch2 :foo-sentinel))))]
-      (is (contains? results :foo-sentinel)))
+  (testing "single channel"
+    (let [ch (channel)]
+      (is (nil? (select-nowait ch)))
+      (is (= :nada (select-nowait ch :nada)))
+      (go (put ch :foo))
+      (with-timeout 50 ;; wait for element to be on the channel
+        (while (nil? (peek ch))))
+      (is (= :foo (select-nowait ch :nada)))))
 
-    (go (put-with-sleeps ch1 1))
-    (go (put-with-sleeps ch2 2))
-    (go (put-with-sleeps ch3 3))
-    (go (put-with-sleeps ch4 4))
+  (testing "single buffered channel"
+    (let [ch (channel 5)]
+      (is (nil? (select-nowait ch)))
+      (is (= :nada (select-nowait ch :nada)))
+      (put ch :foo)
+      (is (= :foo (select-nowait ch :nada)))
+      (is (nil? (select-nowait ch)))
+      (is (= :nada (select-nowait ch :nada)))))
 
-    (loop [cnt 5000 selected #{}]
-      (Thread/sleep 20)
-      (cond
-       (zero? cnt) (is false "After 1000 did not see entry of each channel")
-       (= #{1 2 3 4} selected)     (is true)
-       (= #{1 2 3 4 nil} selected) (is true)
-       :else (recur (dec cnt)
-                    (conj selected (select-nowait ch1 ch2 ch3 ch4)))))
-    )
+  (testing "multiple channels (mixed sync and buffered)"
+    (let [ch1 (channel) ch2 (channel) ch3 (channel) ch4 (channel 10)]
+      (let [results (set
+                     (doall
+                      (for [_ (range 10)]
+                        (select-nowait ch1 ch2 :foo-sentinel))))]
+        (is (contains? results :foo-sentinel)))
+
+      (go (put-with-sleeps ch1 1))
+      (go (put-with-sleeps ch2 2))
+      (go (put-with-sleeps ch3 3))
+      (go (put-with-sleeps ch4 4))
+
+      (loop [cnt 5000 selected #{}]
+        (Thread/sleep 20)
+        (cond
+         (zero? cnt) (is false "After 1000 did not see entry of each channel")
+         (= #{1 2 3 4} selected)     (is true)
+         (= #{1 2 3 4 nil} selected) (is true)
+         :else (recur (dec cnt)
+                      (conj selected (select-nowait ch1 ch2 ch3 ch4)))))
+      ))
   (stop))
 
 

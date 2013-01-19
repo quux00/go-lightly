@@ -215,6 +215,12 @@
       (when-not nowait
         (probe-til-ready pref-chans reg-chans timeout)))))
 
+(defn- doselect-nowait
+  ([chan] (.poll (.q chan)))
+
+  ([chan & channels]
+     (doselect (conj channels chan) nil :nowait)))
+
 (defn- parse-nowait-args [channels]
   (if (keyword? (last channels))
     (split-at (dec (count channels)) channels)
@@ -224,26 +230,35 @@
 ;; ---[ public select fns ]--- ;;
 
 (defn select
-  "Select one message from the channels passed in."
-  [& channels]
-  (doselect channels nil nil))
+  "Select one message from the channels passed in. Blocks until a
+   message can be read from a channel."
+  ([chan] (take chan))
+
+  ([chan & channels]
+     (doselect (conj channels chan) nil nil)))
 
 (defn select-timeout
-  "Like select, selects one message from the channels passed in
+  "Like select, selects one message from the channel(s) passed in
    with the same behavior except that a timeout is in place that
    if no message becomes available before the timeout expires, a
    :go-lightly/timeout sentinel message will be returned."
-  [timeout & channels]
-  (doselect channels timeout nil))
+  ([timeout chan]
+     (let [result (.poll (.q chan) timeout TimeUnit/MILLISECONDS)]
+       (if (nil? result)
+         :go-lightly/timeout
+         result)))
+
+  ([timeout chan & channels]
+     (doselect (conj channels chan) timeout nil)))
 
 (defn select-nowait
-  "Like select, selects one message from the channels passed in
+  "Like select, selects one message from the channel(s) passed in
    with the same behavior except that if no channel has a message
    ready, it immediately returns nil or the sentinel keyword value
    passed in as the last argument."
-  [& channels]
-  (let [[chans sentinel] (parse-nowait-args channels)
-        result (doselect chans nil :nowait)]
+  [& channels-or-sentinel]
+  (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
+        result (apply doselect-nowait chans)]
     (if (and (nil? result) (seq? sentinel))
       (first sentinel)
       result)))
