@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.webcrawler.webcrawl-typed2
+(ns thornydev.go-lightly.examples.webcrawler.webcrawl-typed
   (:require [thornydev.go-lightly.core :as go]
             [net.cgrand.enlive-html :as enlive]
             [clojure.java.io :refer [as-url]]
@@ -119,14 +119,13 @@
   "Grabs the next map value off freq-channel, merges it with the
    master map (msubtots) and returns an updated map."
   [msubtots]
-  (let [freqs (go/select-timeout 100 freqs-channel)]
-    (if (= :go-lightly/timeout freqs)
-      msubtots
-      (merge-with + msubtots freqs)))
-  ;; (if-let [freqs (.poll (.q freqs-channel) 100 java.util.concurrent.TimeUnit/MILLISECONDS)]
-  ;;   (do (println msubtots)
-  ;;       (merge-with + msubtots freqs))
-  ;;   msubtots)
+  ;; (let [freqs (go/select-timeout 100 freqs-channel)]
+  ;;   (if (= :go-lightly/timeout freqs)
+  ;;     msubtots
+  ;;     (merge-with + msubtots freqs)))
+  (if-let [freqs (go/select-timeout 100 freqs-channel)]
+    (merge-with + msubtots freqs)
+    msubtots)
   )
 
 (defn drain-freqs-channel
@@ -171,7 +170,7 @@
    CountDownLatch. Wait (with a scaled timeout) for the latch to cound down
    to zero before proceeding."
   [ncrawlers]
-  (go/with-timeout (min 2000 (* 600 ncrawlers))
+  (go/with-timeout (min 2500 (* 660 ncrawlers))
     (let [latch (CountDownLatch. ncrawlers)]
       (dotimes [_ ncrawlers]
         (go/put crawler-status-channel {:msg :stop, :latch latch}))

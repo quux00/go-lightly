@@ -5,8 +5,7 @@
             [clojure.string :refer [lower-case]])
   (:import (java.io StringReader IOException)
            (java.net URL MalformedURLException)
-           (java.util.concurrent TimeUnit CountDownLatch
-                                 LinkedTransferQueue LinkedBlockingQueue)))
+           (java.util.concurrent CountDownLatch)))
 
 ;; A simple webcrawler based on the example from the end of Chapter 4
 ;; of the O'Reilly Clojure Programming book.  This version attempts
@@ -21,20 +20,17 @@
 ;; ------------------------- ;;
 
 ;; a buffered channel to allow a large number of urls to crawl
-(def ^LinkedBlockingQueue url-channel (go/channel Integer/MAX_VALUE))
+(def url-channel (go/channel Integer/MAX_VALUE))
 
 ;; holds maps of word freqs after parsing an individual page
-(def ^LinkedBlockingQueue freqs-channel (go/channel Integer/MAX_VALUE))
+(def freqs-channel (go/channel Integer/MAX_VALUE))
 
 ;; status channels for the master thread to stop messages onto
-(def ^LinkedTransferQueue crawler-status-channel (go/channel))
-(def ^LinkedTransferQueue freq-reducer-status-channel (go/channel))
+(def crawler-status-channel (go/channel))
+(def freq-reducer-status-channel (go/channel))
 
 ;; set of urls already crawled (ensure no dups searched)
 (def crawled-urls (agent #{}))
-
-;; final tally of all word frequencies
-(def word-frequencies (atom {}))
 
 
 ;; ------------------- ;;
@@ -50,19 +46,19 @@
                  (when-let [href (-> link :attrs :href)]
                    (try
                      (URL. base-url href)
-                     ; ignore bad URLs
+                                        ; ignore bad URLs
                      (catch MalformedURLException e))))))
 
 (defn words-from
   "Returns a lazy-seq of words from parsing a web page"
   [html]
   (let [chunks (-> html
-                 (enlive/at [:script] nil)
-                 (enlive/select [:body enlive/text-node]))]
+                   (enlive/at [:script] nil)
+                   (enlive/select [:body enlive/text-node]))]
     (->> chunks
-      (mapcat (partial re-seq #"\w+"))
-      (remove (partial re-matches #"\d+"))
-      (map lower-case))))
+         (mapcat (partial re-seq #"\w+"))
+         (remove (partial re-matches #"\d+"))
+         (map lower-case))))
 
 (defn process-url
   "Takes a url (as a string) and:
@@ -81,13 +77,13 @@
       (doseq [lnk links :let [nu (str lnk)]]
         ;; only put on todo list if haven't seen yet
         (when-not (@crawled-urls nu)
-          (.put url-channel nu)))
+          (go/put url-channel nu)))
       
       (->> html
            words-from
            (reduce (fn [m word] (update-in m [word] (fnil inc 0))) {})
            doall
-           (.put freqs-channel)))
+           (go/put freqs-channel)))
     (catch IOException io) ;; ignore Pushback buffer overflows from tag-soup lib
     (catch InterruptedException intex) ;; forcibly shut down via future-cancel
     (catch Exception e (println "process-url ERROR: " e))))
@@ -99,8 +95,8 @@
   []
   (try
     (loop []
-      (process-url (.take url-channel))
-      (let [msg (.poll crawler-status-channel)]
+      (process-url (go/take url-channel))
+      (let [msg (go/select-nowait crawler-status-channel)]
         (if (nil? msg)
           (recur)
           (.countDown (:latch msg)))))
@@ -120,9 +116,10 @@
   "Grabs the next map value off freq-channel, merges it with the
    master map (msubtots) and returns an updated map."
   [msubtots]
-  (if-let [freqs (.poll freqs-channel 100 TimeUnit/MILLISECONDS)]
-      (merge-with + msubtots freqs)
-      msubtots))
+  (if-let [freqs (go/select-timeout 100 freqs-channel)]
+    (merge-with + msubtots freqs)
+    msubtots)
+  )
 
 (defn drain-freqs-channel
   "Drains all the remaining values (maps) it can get off the freqs-channel
@@ -138,21 +135,22 @@
    put onto the freqs-channel and reduces them into a single master
    word master map.  When a stop message comes in on the
    freq-reducer-status-channel, it grabs whatever is left on the freqs-
-   channel, sets the value on the word-frequencies shared atom and messages
-   back to the main controller with its id, signalling that it has finished."
+   channel, and returns it on the channel in the message from the status
+   channel, then shutting down."
   [id]
   (try
-    (loop [subtots {}]
-      (let [msg (.poll freq-reducer-status-channel)]
+    (loop [freqtots {}]
+      (let [msg (go/select-nowait freq-reducer-status-channel)]
         (if-not (nil? msg)
-          (do (reset! word-frequencies (drain-freqs-channel subtots))
-              (.put (:channel msg) id))
-          (recur (freq-cycle subtots)))))
-    (catch Exception e (println "reduce-freqs ERROR" e))))
+          (go/put (:channel msg) freqtots)
+          (recur (freq-cycle freqtots)))))
+    (catch Exception e
+      (println "reduce-freqs ERROR" e)
+      (println (.printStackTrace e)))))
 
 (defn start-frequency-reducer
-  "Spawns a go-lightly routine for a single frequency reducer that will process
-   the word frequency maps being put onto the freqs-channel by the crawlers."
+  "Spawns a go-lightly routine for one frequency reducer that will process
+   the word frequency maps put onto the freqs-channel by the crawlers."
   [id]
   (go/go (reduce-freqs id)))
 
@@ -164,32 +162,31 @@
    CountDownLatch. Wait (with a scaled timeout) for the latch to cound down
    to zero before proceeding."
   [ncrawlers]
-  (go/with-timeout (min 2000 (* 600 ncrawlers))
+  (go/with-timeout (min 2500 (* 660 ncrawlers))
     (let [latch (CountDownLatch. ncrawlers)]
       (dotimes [_ ncrawlers]
-        (.put crawler-status-channel {:msg :stop, :latch latch}))
+        (go/put crawler-status-channel {:msg :stop, :latch latch}))
       (.await latch))))
 
-(defn stop-frequency-reducer
+(defn stop-frequency-reducer-and-get-result
   "Signal the frequency-reducer to stop. The message to the reducer includes
    a go-lightly channel for the reducer to message back on when it finishes.
    This fn waits (with 2 sec timeout) for the reducer to message back."
   []
   (go/with-timeout 2000
-    (let [back-channel (go/channel)]
-      (.put freq-reducer-status-channel {:msg :stop
-                                         :channel back-channel})
-      (.take back-channel))))
+    (let [result-channel (go/channel)]
+      (go/put freq-reducer-status-channel {:msg :stop
+                                           :channel result-channel})
+      (go/take result-channel))))
 
 (defn init
   "Initialize the data structures. Needed for repeated use in a REPL."
   [urlstr]
-  (.clear url-channel)
-  (.put url-channel urlstr)
-  (.clear freqs-channel)
-  (.clear freq-reducer-status-channel)
-  (.clear crawler-status-channel)
-  (reset! word-frequencies {})
+  (go/clear url-channel)
+  (go/put url-channel urlstr)
+  (go/clear freqs-channel)
+  (go/clear freq-reducer-status-channel)
+  (go/clear crawler-status-channel)
   (if (agent-error crawled-urls)
     (restart-agent crawled-urls #{} :clear-actions true))
   (send crawled-urls (fn [_] #{}))
@@ -201,17 +198,12 @@
   (start-crawlers ncrawlers)
   (start-frequency-reducer :freq-reducer))
 
-(defn stop [ncrawlers]
-  (stop-crawlers ncrawlers)
-  (stop-frequency-reducer)
-  (go/stop))
-
-(defn report []
+(defn report [word-freqs]
   (println "------------------------------")
   (println "url-channel:" (.size url-channel))
   (println "freqs-channel:" (.size freqs-channel))
   (println "status-channels:" freq-reducer-status-channel)
-  (println "word-frequencies:" (count @word-frequencies))
+  (println "word-frequencies:" (count word-freqs))
   (println "crawled-urls:" (count @crawled-urls))
   (println "------------------------------"))
 
@@ -232,5 +224,7 @@
     (init url)
     (start ncrawlers)
     (Thread/sleep duration)
-    (stop ncrawlers)
-    (report)))
+    (stop-crawlers ncrawlers)
+    (-> (stop-frequency-reducer-and-get-result)
+        report)
+    (go/stop)))
