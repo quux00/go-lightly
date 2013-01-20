@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.webcrawler.webcrawler
+(ns thornydev.go-lightly.examples.webcrawler.webcrawl-typed
   (:require [thornydev.go-lightly.core :as go]
             [net.cgrand.enlive-html :as enlive]
             [clojure.java.io :refer [as-url]]
@@ -31,6 +31,9 @@
 
 ;; set of urls already crawled (ensure no dups searched)
 (def crawled-urls (agent #{}))
+
+;; final tally of all word frequencies
+(def word-frequencies (atom {}))
 
 
 ;; ------------------- ;;
@@ -116,6 +119,10 @@
   "Grabs the next map value off freq-channel, merges it with the
    master map (msubtots) and returns an updated map."
   [msubtots]
+  ;; (let [freqs (go/select-timeout 100 freqs-channel)]
+  ;;   (if (= :go-lightly/timeout freqs)
+  ;;     msubtots
+  ;;     (merge-with + msubtots freqs)))
   (if-let [freqs (go/select-timeout 100 freqs-channel)]
     (merge-with + msubtots freqs)
     msubtots)
@@ -135,15 +142,16 @@
    put onto the freqs-channel and reduces them into a single master
    word master map.  When a stop message comes in on the
    freq-reducer-status-channel, it grabs whatever is left on the freqs-
-   channel, and returns it on the channel in the message from the status
-   channel, then shutting down."
+   channel, sets the value on the word-frequencies shared atom and messages
+   back to the main controller with its id, signalling that it has finished."
   [id]
   (try
-    (loop [freqtots {}]
+    (loop [subtots {}]
       (let [msg (go/select-nowait freq-reducer-status-channel)]
         (if-not (nil? msg)
-          (go/put (:channel msg) freqtots)
-          (recur (freq-cycle freqtots)))))
+          (do (reset! word-frequencies (drain-freqs-channel subtots))
+              (go/put (:channel msg) id))
+          (recur (freq-cycle subtots)))))
     (catch Exception e
       (println "reduce-freqs ERROR" e)
       (println (.printStackTrace e)))))
@@ -168,16 +176,16 @@
         (go/put crawler-status-channel {:msg :stop, :latch latch}))
       (.await latch))))
 
-(defn stop-frequency-reducer-and-get-result
+(defn stop-frequency-reducer
   "Signal the frequency-reducer to stop. The message to the reducer includes
    a go-lightly channel for the reducer to message back on when it finishes.
    This fn waits (with 2 sec timeout) for the reducer to message back."
   []
   (go/with-timeout 2000
-    (let [result-channel (go/channel)]
+    (let [back-channel (go/channel)]
       (go/put freq-reducer-status-channel {:msg :stop
-                                           :channel result-channel})
-      (go/take result-channel))))
+                                           :channel back-channel})
+      (go/take back-channel))))
 
 (defn init
   "Initialize the data structures. Needed for repeated use in a REPL."
@@ -187,6 +195,7 @@
   (go/clear freqs-channel)
   (go/clear freq-reducer-status-channel)
   (go/clear crawler-status-channel)
+  (reset! word-frequencies {})
   (if (agent-error crawled-urls)
     (restart-agent crawled-urls #{} :clear-actions true))
   (send crawled-urls (fn [_] #{}))
@@ -198,12 +207,17 @@
   (start-crawlers ncrawlers)
   (start-frequency-reducer :freq-reducer))
 
-(defn report [word-freqs]
+(defn stop [ncrawlers]
+  (stop-crawlers ncrawlers)
+  (stop-frequency-reducer)
+  (go/stop))
+
+(defn report []
   (println "------------------------------")
   (println "url-channel:" (.size url-channel))
   (println "freqs-channel:" (.size freqs-channel))
   (println "status-channels:" freq-reducer-status-channel)
-  (println "word-frequencies:" (count word-freqs))
+  (println "word-frequencies:" (count @word-frequencies))
   (println "crawled-urls:" (count @crawled-urls))
   (println "------------------------------"))
 
@@ -224,7 +238,5 @@
     (init url)
     (start ncrawlers)
     (Thread/sleep duration)
-    (stop-crawlers ncrawlers)
-    (-> (stop-frequency-reducer-and-get-result)
-        report)
-    (go/stop)))
+    (stop ncrawlers)
+    (report)))

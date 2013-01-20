@@ -1,5 +1,20 @@
 # Introduction to go-lightly
 
+### todo
+
+X Add more type hinting to core
+* Finish blog comparing webcrawler implementations
+- Finish revised README
+- Tag existing GitHub repo and publish that tag on blog entries 1-5
+* Benchmark webcrawler-interop vs. webcrawler-typedChannels
+* jvisualvm analysis of Clojure chinese whispers example
+* Publish TypedChannels version to GitHub
+* Learn how to package for and publish to Clojars
+* Restructure go-lightly into go-lightly and go-lightly-examples lein projects?
+* Publish answer on Stackoverflow about doing Go concurrency in Clojure: link to go-lightly TypedChannel version out
+* Fix font on blogs (color older entries and get the font face correct so looks right on Windows)
+* Start go-lightly wiki on GitHub to see how it works and how to link to it from the README
+
 ### Criterium benchmarks
 * google-1 benchmarks
  
@@ -24,6 +39,65 @@
         Execution time std-deviation : 4.788948 ms
        Execution time lower quantile : 64.132246 ms ( 2.5%)
        Execution time upper quantile : 82.208824 ms (97.5%)
+
+
+* google-2.0 benchmarks: typed
+
+    Evaluation count : 960 in 60 samples of 16 calls.
+                 Execution time mean : 75.600093 ms
+        Execution time std-deviation : 4.939574 ms
+       Execution time lower quantile : 64.870360 ms ( 2.5%)
+       Execution time upper quantile : 84.254095 ms (97.5%)
+
+* google-3.0-nt benchmarks: typed
+
+    ;; with buffered-channel in first-to-finish
+    Evaluation count : 1260 in 60 samples of 21 calls.
+                 Execution time mean : 54.121599 ms
+        Execution time std-deviation : 4.514020 ms
+       Execution time lower quantile : 44.190562 ms ( 2.5%)
+       Execution time upper quantile : 61.165908 ms (97.5%)
+
+    ;; with sync-channel in first-to-finish
+    Evaluation count : 1320 in 60 samples of 22 calls.
+                 Execution time mean : 53.796138 ms
+        Execution time std-deviation : 4.069949 ms
+       Execution time lower quantile : 47.272136 ms ( 2.5%)
+       Execution time upper quantile : 61.356316 ms (97.5%)
+
+    ;; with sync-channel in first-to-finish
+    Evaluation count : 1380 in 60 samples of 23 calls.
+                 Execution time mean : 54.083988 ms
+        Execution time std-deviation : 4.317564 ms
+       Execution time lower quantile : 45.592715 ms ( 2.5%)
+       Execution time upper quantile : 61.786262 ms (97.5%)
+
+
+### chinese-whispers benchmarks
+
+    user=> (time (w/whispers-as-you-go 200000))
+    200001
+    "Elapsed time: 8800.131523 msecs"
+    
+    user=> (time (w/whispers-as-you-go 100000))
+    100001
+    "Elapsed time: 4329.229876 msecs"
+    
+    user=> (time (w/whispers-as-you-go 100000))
+    100001
+    "Elapsed time: 4472.125846 msecs"
+    
+    user=> (time (w/whispers-as-you-go 20000))
+    20001
+    "Elapsed time: 3285.003332 msecs"
+    
+    user=> (time (w/whispers-main 20000))
+    20001
+    "Elapsed time: 434.828855 msecs"
+    
+    user=> (time (w/whispers-main 10000))
+    10001
+    "Elapsed time: 260.610251 msecs"
 
 
 ## Notes on Lamina
@@ -163,10 +237,16 @@ Three pools of state to webcrawler example
 
 fn                channel        buffered-channel
 ------            -------        ----------------
-put              .transfer       .put (blocks only if full) or .offer
-take             .take           .poll
-put :timeout     .offer timeout  .offer timeout
-offer            .offer timeout  .offer timeout
-take :timeout    .poll timeout   .poll timeout
-poll             .poll timeout   .poll timeout
+put              .transfer       .put (blocks only if full)
+take             .take           .take (blocks only if empty) 
 peek             .peek           .peek
+select-timeout   .poll timeout   .poll timeout  (if only one channel passed)
+select-nowait    .poll           .poll
+size             .size           .size
+
+
+
+## Reading to do
+https://groups.google.com/forum/?hl=fr&fromgroups=#!topic/golang-nuts/koCM3i-bbMs
+* Notes from above
+** Synchronous channels have a lot of advantages by making program flow predictable and easier to think about.

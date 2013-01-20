@@ -1,5 +1,7 @@
 (ns thornydev.go-lightly.core
-  (:import (java.util ArrayList)
+  (:refer-clojure :exclude [peek take])
+  (:import (java.io Closeable)
+           (java.util ArrayList)
            (java.util.concurrent LinkedTransferQueue TimeUnit
                                  LinkedBlockingQueue TimeoutException)))
 
@@ -54,42 +56,118 @@
 
 ;; ---[ channels and channel fn ]--- ;;
 
+(declare closed?)
+
+(defprotocol GoChannel
+  (put [this val] "Put a value on a channel. May or may not block depending on type and circumstances.")
+  (take [this] "Take the first value from a channel")
+  (size [this] "Returns the number of values on the channel")
+  (peek [this] "Retrieve, but don't remove, the first element on the channel")
+  (clear [this] "Remove all elements from the channel without returning them"))
+
+(deftype Channel [^LinkedTransferQueue q open? prefer?]
+  GoChannel
+  (put [this val]
+    (if @(.open? this)
+      (.transfer q val)
+      (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
+
+  (take [this] (.take q))
+  (peek [this] (.peek q))
+  (size [this] 0)
+  (clear [this] (.clear q))
+
+  Object
+  (toString [this]
+    (let [stat-str (when-not @(.open? this) ":closed ")]
+      (if-let [sq (seq (.toArray q))]
+        (str stat-str "<=[ ..." sq "] ")
+        (str stat-str "<=[] "))))
+
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil))
+
+(deftype BufferedChannel [^LinkedBlockingQueue q open? prefer?]
+  GoChannel
+  (put [this val]
+    (if @(.open? this)
+      (.put q val)
+      (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
+  (take [this] (.take q))
+  (peek [this] (.peek q))
+  (size [this] (.size q))
+  (clear [this] (.clear q))
+  
+  Object
+  (toString [this]
+    (let [stat-str (when-not @(.open? this) ":closed ")]
+      (str stat-str "<=[" (apply str (interpose " " (seq (.toArray q)))) "] ")))
+
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil))
+
+(deftype TimeoutChannel [^LinkedBlockingQueue q open? prefer?]
+  GoChannel
+  (put [this val] (throw (UnsupportedOperationException.
+                          "Cannot put values onto a TimeoutChannel")))
+  (take [this] (.take q))
+  (peek [this] (.peek q))
+  (size [this] (.size q))
+  (clear [this] (throw (UnsupportedOperationException.
+                        "Cannot clear a TimeoutChannel")))
+
+  Object
+  (toString [this]
+    (if (closed? this)
+      ":closed <=[:go-lightly/timeout] "
+      "<=[] "))
+
+  Closeable
+  (close [this]
+    (reset! (.open? this) false)
+    nil))
+
+(defn close [channel] (.close channel))
+
+(defn closed? [channel]
+  (not @(.open? channel)))
+
+(defn prefer [channel]
+  (reset! (.prefer? channel) true)
+  channel)
+
+(defn unprefer [channel]
+  (reset! (.prefer? channel) false)
+  channel)
+
+(defn preferred? [channel]
+  @(.prefer? channel))
+
 (defn channel
-  "If no size is specifies, returns a TransferQueue as a channel.
-   If a size is passed is in, returns a bounded BlockingQueue."
-  ([] (LinkedTransferQueue.))
-  ([size] (LinkedBlockingQueue. size)))
+  "If no size is specifies, returns a synchronous blocking channel.
+   If a size is passed is in, returns a bounded asynchronous channel."
+  ([] (->Channel (LinkedTransferQueue.) (atom true) (atom false)))
+  ([^long capacity]
+     (->BufferedChannel (LinkedBlockingQueue. capacity)
+                        (atom true) (atom false))))
+
+(defn preferred-channel
+  ([] (prefer (channel)))
+  ([capacity] (prefer (channel capacity))))
 
 (defn timeout-channel
   "Create a channel that after the specified duration (in
    millis) will have the :go-lightly/timeout sentinel value"
-  [duration]
-  (let [ch (channel)]
-    (go& (do (Thread/sleep duration)
-             (.put ch :go-lightly/timeout)))
+  [duration-ms]
+  (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
+    (go& (do (Thread/sleep duration-ms)
+             (.put (.q ch) :go-lightly/timeout)
+             (close ch)))
     ch))
-
-
-;; right now this is for use only with the lamina channels which can be closed
-;; copied and modified from with-open from clojure.core
-(defmacro with-channel-open
-  "bindings => [name init ...]
-
-  Evaluates body in a try expression with names bound to the values
-  of the inits, and a finally clause that calls (close name) on each
-  name in reverse order."
-  [bindings & body]
-  (assert (vector? bindings) "a vector for its binding")
-  (assert (even? (count bindings)) "an even number of forms in binding vector")
-  (cond
-    (= (count bindings) 0) `(do ~@body)
-    (symbol? (bindings 0)) `(let ~(subvec bindings 0 2)
-                              (try
-                                (with-channel-open ~(subvec bindings 2) ~@body)
-                                (finally
-                                  (~'close ~(bindings 0)))))
-    :else (throw (IllegalArgumentException.
-                   "with-open only allows Symbols in bindings"))))
 
 
 ;; ---[ select and helper fns ]--- ;;
@@ -101,63 +179,83 @@
     (> (now) (+ start duration))))
 
 (defn- choose [ready-chans]
-  (.take (nth ready-chans (rand-int (count ready-chans)))))
+  (take (nth ready-chans (rand-int (count ready-chans)))))
 
-(defn- peek-channels [channels]
-  (let [ready (doall (keep #(when-not (nil? (.peek %)) %) channels))]
-    (if (seq ready)
-      (nth ready (rand-int (count ready)))  ;; pick at random if >1 ready
-      (Thread/sleep 0 500))))
+(defn- filter-ready [chans]
+  (seq (doall (filter #(not (nil? (peek %))) chans))))
 
-;; TODO: if any of these channels are timeout channels, they
-;; need to be read preferentially, so we would need to add
-;; some polymorphism or flags to detect which are timeout
-;; channels => can do this by creating our own protocols for
-;; the channel and have a defrecord type of TimerChannel
-;; vs. regular GoChannel
-(defn- probe-til-ready [channels timeout]
+(defn- attempt-select [pref-chans reg-chans]
+  (if-let [ready-list (filter-ready pref-chans)]
+    (choose ready-list)
+    (when-let [ready-list (filter-ready reg-chans)]
+      (choose ready-list))))
+
+(defn- probe-til-ready [pref-chans reg-chans timeout]
   (let [start (now)]
-    (loop [chans channels ready-chan nil]
+    (loop [ready-chan nil mcsec 200]
       (cond
-       ready-chan (.take ready-chan)
-       (timed-out? start timeout) :go-lightly/timeout
-       :else (recur channels (peek-channels channels))))))
+       ready-chan ready-chan
+       (timed-out? start timeout) nil
+       :else (do (Thread/sleep 0 mcsec)
+                 (recur (attempt-select pref-chans reg-chans)
+                        (min 1500 (+ mcsec 25))))))))
+
+(defn- separate-preferred [channels]
+  (loop [chans channels pref [] reg []]
+    (if (seq chans)
+      (if (preferred? (first chans))
+        (recur (rest chans) (conj pref (first chans)) reg)
+        (recur (rest chans) pref (conj reg (first chans))))
+      [pref reg])))
 
 (defn- doselect [channels timeout nowait]
-  (let [ready (doall (filterv #(not (nil? (.peek %))) channels))]
-    (if (seq ready)
-      (choose ready)
+  (let [[pref-chans reg-chans] (separate-preferred channels)]
+    (if-let [ready (attempt-select pref-chans reg-chans)]
+      ready
       (when-not nowait
-        (probe-til-ready channels timeout)))))
+        (probe-til-ready pref-chans reg-chans timeout)))))
+
+(defn- doselect-nowait
+  ([chan] (.poll (.q chan)))
+
+  ([chan & channels]
+     (doselect (conj channels chan) nil :nowait)))
 
 (defn- parse-nowait-args [channels]
   (if (keyword? (last channels))
     (split-at (dec (count channels)) channels)
     [channels nil]))
 
-;; public select fns
+
+;; ---[ public select fns ]--- ;;
 
 (defn select
-  "Select one message from the channels passed in."
-  [& channels]
-  (doselect channels nil nil))
+  "Select one message from the channels passed in. Blocks until a
+   message can be read from a channel."
+  ([chan] (take chan))
+
+  ([chan & channels]
+     (doselect (conj channels chan) nil nil)))
 
 (defn select-timeout
-  "Like select, selects one message from the channels passed in
+  "Like select, selects one message from the channel(s) passed in
    with the same behavior except that a timeout is in place that
-   if no message becomes available before the timeout expires, a
-   :go-lightly/timeout sentinel message will be returned."
-  [timeout & channels]
-  (doselect channels timeout nil))
+   if no message becomes available before the timeout expires, nil
+   will be returned."
+  ([timeout chan]
+     (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
+  
+  ([timeout chan & channels]
+     (doselect (conj channels chan) timeout nil)))
 
 (defn select-nowait
-  "Like select, selects one message from the channels passed in
+  "Like select, selects one message from the channel(s) passed in
    with the same behavior except that if no channel has a message
    ready, it immediately returns nil or the sentinel keyword value
    passed in as the last argument."
-  [& channels]
-  (let [[chans sentinel] (parse-nowait-args channels)
-        result (doselect chans nil :nowait)]
+  [& channels-or-sentinel]
+  (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
+        result (apply doselect-nowait chans)]
     (if (and (nil? result) (seq? sentinel))
       (first sentinel)
       result)))
@@ -171,7 +269,7 @@
    Generally recommended for use with a buffered channel, but will return
    return a single value if a producer is waiting to put one on."
   [ch]
-  (seq (.toArray ch)))
+  (seq (.toArray (.q ch))))
 
 (defn channel->vec
   "Takes a snapshot of all values on a channel *without* removing
@@ -179,7 +277,7 @@
    Generally recommended for use with a buffered channel, but will return
    return a single value if a producer is waiting to put one on."
   [ch]
-  (vec (.toArray ch)))
+  (vec (.toArray (.q ch))))
 
 (defn drain
   "Removes all the values on a channel and returns them as a non-lazy seq.
@@ -187,7 +285,7 @@
    a pending transfer value if a producer is waiting to put one on."
   [ch]
   (let [al (ArrayList.)]
-    (.drainTo ch al)
+    (.drainTo (.q ch) al)
     (seq al)))
 
 (defn lazy-drain
@@ -197,7 +295,7 @@
    on or more values one or more producer(s) is waiting to put a one or
    more values on.  There is a race condition with producers when using."
   [ch]
-  (if-let [v (.poll ch)]
+  (if-let [v (.poll (.q ch))]
     (cons v (lazy-seq (lazy-drain ch)))
     nil))
 

@@ -37,16 +37,16 @@
 (defn google-20 [query]
   (let [ch (go/channel)]
     (doseq [search [web image video]]
-      (go/go (.transfer ch (search query))))
+      (go/go (go/put ch (search query))))
     (vec
-     (for [_ (range 3)] (.take ch)))))
+     (for [_ (range 3)] (go/take ch)))))
 
 ;; use a timeout-channel to limit the round of searches
 ;; to a maximum of 80 ms
 (defn google-21 [query]
   (let [ch (go/channel)]
     (doseq [search [web image video]]
-      (go/go (.transfer ch (search query))))
+      (go/go (go/put ch (search query))))
 
     (let [tch (go/timeout-channel 80)]
       (loop [msg (go/select ch tch) responses []]
@@ -66,11 +66,11 @@
         searches  [web image video]
         output-ch (go/channel (count searches))]
     (doseq [search searches]
-      (go/go (.transfer search-ch (search query))))
+      (go/go (go/put search-ch (search query))))
 
     (go/with-timeout 80
       (dotimes [_ (count searches)]
-        (.put output-ch (.take search-ch))))
+        (go/put output-ch (go/take search-ch))))
 
     (let [out-vec (go/channel->vec output-ch)]
       (when (not= (count out-vec) (count searches))
@@ -85,26 +85,40 @@
   [query & replicas]
   (let [ch (go/channel)]
     (doseq [rep replicas]
-      (go/go (.put ch (rep query))))
-    (.take ch)))
+      (go/go (go/put ch (rep query))))
+    (go/take ch)))
 
 
 (defn google-3 [query]
   (let [ch (go/channel)
-        out-ch (go/channel)]
+        out-ch (go/channel 3)]
 
-    (go/go (.put ch (first-to-finish query web1 web2)))
-    (go/go (.put ch (first-to-finish query image1 image2)))
-    (go/go (.put ch (first-to-finish query video1 video2)))
+    (go/go (go/put ch (first-to-finish query web1 web2)))
+    (go/go (go/put ch (first-to-finish query image1 image2)))
+    (go/go (go/put ch (first-to-finish query video1 video2)))
 
     (go/with-timeout 80
       (dotimes [_ 3]
-        (.put out-ch (.take ch))))
+        (go/put out-ch (go/take ch))))
 
     (let [out-vec (go/channel->vec out-ch)]
       (when-not (= 3 (count out-vec))
         (println "Timed out."))
       out-vec)))
+
+;; for benchmarking
+(defn google-3-no-timeout [query]
+  (let [ch (go/channel)
+        out-ch (go/channel 3)]
+    
+    (go/go (go/put ch (first-to-finish query web1 web2)))
+    (go/go (go/put ch (first-to-finish query image1 image2)))
+    (go/go (go/put ch (first-to-finish query video1 video2)))
+
+    (dotimes [_ 3]
+      (go/put out-ch (go/take ch)))
+
+    (go/channel->vec out-ch)))
 
 (defn now []
   (System/currentTimeMillis))
@@ -118,7 +132,8 @@
     :goog2.0 google-20
     :goog2.1 google-21
     :goog2.1b google-21b
-    :goog3.0 google-3))
+    :goog3.0 google-3
+    :goog3-nt google-3-no-timeout))
 
 (defn google-main [version]
   (let [start (now)
