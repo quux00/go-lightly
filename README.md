@@ -62,7 +62,7 @@ Like `go`, Clojure's `future` runs the function given to it in another thread.  
 
 The go-lightly library provides a `go` macro that internally invokes `future`, but ignores the Future that it returns.
 
-When designing your concurrent programs in Clojure, think about whether you want to get the return value of the future and use that to coordinate threads.  If so, then you don't need go-lightly.  But if you want to spawn up "go routines" that will communicate via channels and treat those go routines like daemon threads, go-lightly facilitates that and makes it easy to do.  See [the wiki](xxx) for detailed examples.
+When designing your concurrent programs in Clojure, think about whether you want to get the return value of the future and use that to coordinate threads.  If so, then you don't need go-lightly.  But if you want to spawn up "go routines" that will communicate via channels and treat those go routines like daemon threads, go-lightly facilitates that and makes it easy to do.  See [the wiki](https://github.com/midpeter444/go-lightly/wiki) for detailed examples.
 
 
 ## Synchronous Blocking Channels
@@ -138,7 +138,7 @@ ch <- resultA
 
 This is not going to work. Due to a race to read from the channel, thread A is sometimes going to consume it's own instruction message and thread B is going to hang forever.  And if by chance thread A doesn't consume it's own messages, thread B is likely to consume its own result messages.
 
-A better solution is to use two channels and treat each one as unidirectional.  [The wiki](xxx) has examples of doing this.
+A better solution is to use two channels and treat each one as unidirectional.  [The wiki](https://github.com/midpeter444/go-lightly/wiki) has examples of doing this.
 
 A key consideration when using channels is that you have to be careful to not code yourself into a deadlock.  This is particularly true in Clojure.  Go has nice built-in deadlock detection that issues a panic to tell you that all threads are deadlocked.  Java threads, and therefore Clojure threads, just go into la-la land never to be heard from again.  You'd have to get a thread dump to see what's happened.  Thread dumps are your friend when doing concurrent programming with blocking communications on the JVM.
 
@@ -157,7 +157,7 @@ Finally, the go-lightly library has built a formal abstraction: the GoChannel pr
   (clear [this] "Remove all elements from the channel without returning them"))
 ```
 
-There are other functions for channels not part of the GoChannel abstraction that will discussed below and in the wiki.
+There are other functions for channels not part of the GoChannel abstraction that will discussed below and in [the wiki](https://github.com/midpeter444/go-lightly/wiki).
 
 The specific GoChannel implementation type for Go channels is called Channel.
 
@@ -209,7 +209,7 @@ This `select` evaluates two channels and there are four possible scenarios:
 3. Both c1 and c2 are ready to give a message. One of them is randomly chosen for reading and execution of its code block. Note this means that you cannot depend on the order your clauses will be executed in.
 4. Neither c1 nor c2 are ready to give a message. The select will block until the first one is ready, at which point it will be read from the channel and execute the corresponding code clause.
 
-`select` statements in Go can also have timeouts or a default clause that executes immediately if none of the other cases are ready.  Examples are provided in the wiki.
+`select` statements in Go can also have timeouts or a default clause that executes immediately if none of the other cases are ready.  Examples are provided in [the wiki](https://github.com/midpeter444/go-lightly/wiki).
 
 ### select in go-lightly
 
@@ -287,7 +287,7 @@ The second Go timeout example above uses an explicit return statement that is no
     ))
 ```
 
-The usage scenarios around these three options are discussed [in the wiki](#need-wiki-link).
+The usage scenarios around these three options are discussed [in the wiki](https://github.com/midpeter444/go-lightly/wiki).
 
 
 
@@ -326,7 +326,7 @@ The go-lightly library is composed of one file: the thornydev.go-lightly.core na
 
 In addition, I have provided a number of usage examples that I assembled or wrote while thinking about how to develop this library.
 
-The wiki (**under construction**) will walk through detailed examples for go-lightly itself.
+[The wiki](https://github.com/midpeter444/go-lightly/wiki) (**under construction**) will walk through detailed examples for go-lightly itself.
 
 There are basically 4 categories of examples you'll see as you peruse the examples:
 
@@ -350,7 +350,7 @@ will run all three of those targets sequentially.
 
 ## Resources
 
-The [go-lightly wiki](#wiki-link) **(under construction)**
+The [go-lightly wiki](https://github.com/midpeter444/go-lightly/wiki) **(under construction)**
 
 While developing the library, I did some "thinking out loud" in a set of blog posts:
 

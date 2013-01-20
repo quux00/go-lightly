@@ -20,7 +20,8 @@
   (go/stop))
 
 (defn whispers-as-you-go
-  "build from right to left - all constructed before starts"
+  "build from right to left - construct the go routines as you need
+   them and let the threads finish to be reused by other go routines"
   [nthreads]
   (let [n (Integer/valueOf nthreads)
         rightmost (go/channel)

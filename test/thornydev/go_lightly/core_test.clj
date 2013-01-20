@@ -223,7 +223,7 @@
       (is (not (closed? ch)))
       (is (= 0 (take ch)))
       ;; now close
-      (close ch)
+      (close! ch)
       (is (closed? ch))
       (is (= 1 (take ch)))
       (is (= 2 (take ch)))
@@ -238,7 +238,7 @@
       (is (not (closed? ch)))
       (is (= 1 (peek ch)))
       ;; now close ch -> will throw (silent) exception in go routine
-      (close ch)
+      (close! ch)
       (is (closed? ch))
       (is (= 1 (peek ch)))
       (is (= 1 (take ch)))))
@@ -274,16 +274,16 @@
                       (conj selected (select-timeout 20 ch3 ch1 ch2)))))
       
       (testing "make a channel a prefered after creating"
-        ;; prefer modifies the channel in place
-        (prefer ch3)
+        ;; prefer! modifies the channel in place
+        (prefer! ch3)
         (is (preferred? ch3))
         (dotimes [i 10]
           (is (= :quux (select ch1 ch2 ch3)))))
 
       (testing "make channel unpreferred should now allow equal
                 choice between remaining non-empty non-preferred channels"
-        ;; unprefer modifies the channel in place
-        (unprefer ch3)
+        ;; unprefer! modifies the channel in place
+        (unprefer! ch3)
         (is (not (preferred? ch3)))
 
         (loop [cnt 1000 selected #{:go-lightly/timeout}]
@@ -340,7 +340,7 @@
     (testing "channel->vec and channel->seq return all elements on a closed channel"
       (let [ch (channel 30)]
         (put-20 ch) ;; puts 0 .. 19
-        (close ch)
+        (close! ch)
         (is (= 20 (size ch)))
         (let [chvec (channel->vec ch)
               chseq (channel->seq ch)]
@@ -372,7 +372,7 @@
         (go (put-20 ch)) ;; puts 0 .. 19
         (with-timeout 50 ;; wait for first element to be on the channel
           (while (nil? (peek ch))))
-        (close ch)
+        (close! ch)
         (let [chseq (channel->seq ch)
               chvec (channel->vec ch)]
           (is (= 0 (first chseq)))
@@ -449,7 +449,7 @@
     (testing "lazy-drain removes and returns all enqueued values from closed channel"
       (let [ch (channel 50)]
         (put-20 ch :foo)
-        (close ch)
+        (close! ch)
         (is (= 20 (size ch)))
         (let [seqch (lazy-drain ch)]
           (is (= 20 (count seqch)))

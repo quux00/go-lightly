@@ -131,20 +131,36 @@
     (reset! (.open? this) false)
     nil))
 
-(defn close [channel] (.close channel))
+(defn close!
+  "Modifies the channel to be closed so that producers can no
+  longer put any data on the channel.  Receivers can take any
+  existing values off the channel after it is closed."
+  [channel] (.close channel))
 
-(defn closed? [channel]
+(defn closed?
+  "Predicate check of whether a channel has closed status or not."
+  [channel]
   (not @(.open? channel)))
 
-(defn prefer [channel]
+(defn prefer!
+  "Modifies the channel to have preferred status in a select
+  statement, so it will be preferentially read from over a
+  non-preferred channel if multiple channels have values ready."
+  [channel]
   (reset! (.prefer? channel) true)
   channel)
 
-(defn unprefer [channel]
+(defn unprefer! [channel]
+  "Modifies the channel to remove preferred status in a select
+  statement, so it will be no longer be preferentially read 
+  from over a non-preferred channel."
   (reset! (.prefer? channel) false)
   channel)
 
-(defn preferred? [channel]
+(defn preferred?
+  "Predicate check of whether a channel has preferred status in
+  a select statement or not."
+  [channel]
   @(.prefer? channel))
 
 (defn channel
@@ -156,8 +172,10 @@
                         (atom true) (atom false))))
 
 (defn preferred-channel
-  ([] (prefer (channel)))
-  ([capacity] (prefer (channel capacity))))
+  "Create a channel with preferred status. Has the same API
+  as the channel function."
+  ([] (prefer! (channel)))
+  ([capacity] (prefer! (channel capacity))))
 
 (defn timeout-channel
   "Create a channel that after the specified duration (in
@@ -166,7 +184,7 @@
   (let [ch (->TimeoutChannel (LinkedBlockingQueue. 1) (atom true) (atom true))]
     (go& (do (Thread/sleep duration-ms)
              (.put (.q ch) :go-lightly/timeout)
-             (close ch)))
+             (close! ch)))
     ch))
 
 

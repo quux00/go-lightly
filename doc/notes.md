@@ -2,6 +2,7 @@
 
 ### todo
 
+* Go range == Clojure while: http://golangtutorials.blogspot.com/2011/06/channels-in-go-range-and-select.html
 X Add more type hinting to core
 * Finish blog comparing webcrawler implementations
 - Finish revised README
@@ -14,6 +15,22 @@ X Add more type hinting to core
 * Publish answer on Stackoverflow about doing Go concurrency in Clojure: link to go-lightly TypedChannel version out
 * Fix font on blogs (color older entries and get the font face correct so looks right on Windows)
 * Start go-lightly wiki on GitHub to see how it works and how to link to it from the README
+* Read: man select_tut
+* Read source code of Clojure case macro
+* Add selectf: options:'
+
+(defn macro-version []
+  (selectf
+   ch1 #(println %)
+   ch2 #(println %)
+   :default #(println "nada")))
+
+(defn data-all-the-things-version []
+  (selectf
+   [ch1 #(println %)]
+   [ch2 #(println %)]
+   [:default #(println "nada")]))
+
 
 ### Criterium benchmarks
 * google-1 benchmarks
