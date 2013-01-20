@@ -2,7 +2,9 @@
 
 ## Overview
 
-Go-lightly is a Clojure library that facilitates building concurrent programs in Clojure in the style built into the Go language.  Go concurrency is based on the [Communicating Sequential Processes](http://en.wikipedia.org/wiki/Communicating_sequential_processes) (CSP) model of programming.  CSP addresses concurrency interaction patterns - how separate processes (in the Unix or Erlang sense), threads or routines communicate and coordinate with each other via **message passing**. A CSP language or library is intended to provided constructs that reduce the complexity of inter-process/inter-thread communication using primitives that are easy to use and reason about. This means not having to be a deep expert in a system's memory model in order to do concurrent programming. Instead, it hides semaphores, mutexes, barriers and other low level concurrency constructs in higher-level abstractions.
+Go-lightly is a Clojure library that facilitates building concurrent programs in Clojure in the style built into the Go language.  Go concurrency is based on the [Communicating Sequential Processes](http://en.wikipedia.org/wiki/Communicating_sequential_processes) (CSP) model of programming.  
+
+CSP addresses concurrency interaction patterns - how separate processes, threads or routines communicate and coordinate with each other via **message passing**. A CSP language or library is intended to provided constructs that reduce the complexity of inter-process/inter-thread communication using primitives that are easy to use and reason about. This means not having to be a deep expert in a system's memory model in order to do concurrent programming. Instead, it hides semaphores, mutexes, barriers and other low level concurrency constructs in higher-level abstractions.
 
 The core constructs of the Go concurrency programming are:
 
@@ -21,7 +23,7 @@ In this overview, I introduce these Go concepts using Go code examples and termi
 
 Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
-Go-lightly has been tested with Clojure 1.3, 1.4 and 1.5 (**>>TODO: make this true<<**) and works with all of those, as long as Java 7 is provided.
+Go-lightly has been so far tested with Clojure 1.4.  I intend to ensure it is compatible with Clojure 1.3, 1.4 and 1.5, as long as Java 7 is provided.
 
 The core go-lightly library has no dependencies beyond Clojure and Java 7.  However, some of the example code requires Zach Tellman's lamina library, since I played with ways to emulate some Go-concurrency programming features using lamina.
 
@@ -58,7 +60,7 @@ Like `go`, Clojure's `future` runs the function given to it in another thread.  
 
 3. `future` returns a Future whereas `go` returns nothing.  If you need to wait on a go routine to finish or deliver some value, you instead use a channel for communication (or, set some shared state for other thread to check, which is *not* idiomatic).  With a Future you can wait on it to finish and return a value to you directly.
 
-The go-lightly library provides a `go` function that internally invokes `future`, but ignores the Future that it returns.
+The go-lightly library provides a `go` macro that internally invokes `future`, but ignores the Future that it returns.
 
 When designing your concurrent programs in Clojure, think about whether you want to get the return value of the future and use that to coordinate threads.  If so, then you don't need go-lightly.  But if you want to spawn up "go routines" that will communicate via channels and treat those go routines like daemon threads, go-lightly facilitates that and makes it easy to do.  See [the wiki](xxx) for detailed examples.
 
@@ -330,10 +332,10 @@ There are basically 4 categories of examples you'll see as you peruse the exampl
 
 1. Examples in Go in the go-examples directory from Rob Pike and golang website.  See the README in the go-examples directory on how to set up to run them.
 2. Examples in Clojure the clj-examples directory include:
-* Examples using Java's SynchronousQueue, TransferQueue and LinkedBlockingQueue as Go channels
-* Examples using the Clojure [lamina](https://github.com/ztellman/lamina) library as Go channels
-  * Some of these are taken from gists done by Alexey Kachayev in thinking about how to go CSP Go-style programming in Clojure
-* Examples using the go-lightly library
+  1. Examples using Java's SynchronousQueue, TransferQueue and LinkedBlockingQueue as Go channels
+  2. Examples using the Clojure [lamina](https://github.com/ztellman/lamina) library as Go channels
+    * Some of these are taken from gists done by Alexey Kachayev in thinking about how to go CSP Go-style programming in Clojure
+  3. Examples using the go-lightly library
 
 Each example can be loaded up and run in the REPL.
 
@@ -352,10 +354,10 @@ The [go-lightly wiki](#wiki-link) **(under construction)**
 
 While developing the library, I did some "thinking out loud" in a set of blog posts:
 
-* Part 1: [introduction](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html)
-* Part 2: [select](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html)
-* Part 3: [why go-lightly?](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure3.html)
-* Part 4: [idioms and tradeoffs](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure4.html)
+* Part 1: [Go Concurrency Constructs in Clojure](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html)
+* Part 2: [Go Concurrency Constructs in Clojure: select](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html)
+* Part 3: [Go Concurrency Constructs in Clojure: why go-lightly?](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure3.html)
+* Part 4: [Go Concurrency Constructs in Clojure: idioms and tradeoffs](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure4.html)
 
 #### Talks by Rob Pike:
 * [Google I/O 2012 - Go Concurrency Patterns](http://www.youtube.com/watch?v=f6kdp27TYZs&feature=youtu.be)
@@ -367,6 +369,6 @@ While developing the library, I did some "thinking out loud" in a set of blog po
 
 Copyright © 2012 Michael Peterson
 
-Some of the example code in the go-examples is copyright Rob Pike or and some in clj-examples is copyright [Alexey Kachayev](https://github.com/kachayev).
+Some of the example code in the go-examples directory is copyright Rob Pike or and some in clj-examples is copyright [Alexey Kachayev](https://github.com/kachayev).
 
 Distributed under the Eclipse Public License, the same as Clojure.
