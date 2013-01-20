@@ -16,7 +16,7 @@ The go-lightly library provides all of these (plus a few extras) by wrapping fea
 
 In this overview, I introduce these Go concepts using Go code examples and terminology and then show how to use the go-lightly library to program with the concepts in Clojure.
 
-## Compatibility Notes, Minimal Requirements and Dependencies
+### Compatibility Notes, Minimal Requirements and Dependencies
 
 Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
@@ -32,21 +32,22 @@ Go routines in Go can be thought of as spawning a process in the background, as 
 
 To create a Go routine you simply invoke a function call with `go` in front of it and it will run that function in another thread.  In this aspect, Go's `go` is very similar to Clojure's `future` function.
 
-    func SayHello(name) {
-      time.Sleep(2 * time.Second)
-      print "Hello: " + name + "\n";
-    }
-    go SayHello("Fred");  // returns immediately
-    // two seconds later prints "Hello Fred"
-    
+```go
+func SayHello(name) {
+  time.Sleep(2 * time.Second)
+  print "Hello: " + name + "\n";
+}
+go SayHello("Fred");  // returns immediately
+// two seconds later prints "Hello Fred"
+```
 
-    
-    ;; the Clojure version of the above (almost)
-    (defn say-hello [name]  
-      (Thread/sleep 2000)
-      (println "Hello:" name))
-    (future (say-hello "Fred"))
-
+```clj
+;; the Clojure version of the above (almost)
+(defn say-hello [name]  
+  (Thread/sleep 2000)
+  (println "Hello:" name))
+(future (say-hello "Fred"))
+```
 
 Like `go`, Clojure's `future` runs the function given to it in another thread.  However, `future` differs from Go routines in three important ways:
 
@@ -65,37 +66,45 @@ When designing your concurrent programs in Clojure, think about whether you want
 
 In Go, when you create a channel with no arguments, you get a synchronous blocking channel:
 
-    // Go version
-    // returns a synchronous channel that takes int values
-    ch := make(chan int)
+```go
+// Go version
+// returns a synchronous channel that takes int values
+ch := make(chan int)
+```
 
-
-    ;; Clojure version
-    ;; Clojure channels are not typed - any value can be placed on it
-    (def ch (go/channel))
+```clj
+;; Clojure version
+;; Clojure channels are not typed - any value can be placed on it
+(def ch (go/channel))
+```
 
 Puts and takes, or "sends" and "receives" in Go's parlance, are done with the left arrow operator: `<-`. Any send on the channel will block until a receive is done by another thread:
 
-    // Go version
-    // blocks until value is received
-    ch <- 42
+```go
+// Go version
+// blocks until value is received
+ch <- 42
+```
 
-
-    ;; Clojure version
-    (go/put ch 42)
+```clj
+;; Clojure version
+(go/put ch 42)
+```
 
 Likewise, any receive on the channel blocks until a send is done by another thread:
 
-    // Go version
-    // blocks until value is sent to the channel
-    myval := <-ch
+```go
+// Go version
+// blocks until value is sent to the channel
+myval := <-ch
+```
 
-
-    // Clojure version
-    (let [myval (go/take ch)]
-      ;; do something with myval
-      )
-
+```clj
+// Clojure version
+(let [myval (go/take ch)]
+  ;; do something with myval
+  )
+```
 In Go parlance, synchronous blocking channels are simply called "channels", while (mostly) non-blocking asynchronous channels are called "buffered channels", so I will use those terms from here forward.
 
 The [java.util.concurrent package](http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/package-frame.html) includes a number of very nice concurrent queues, which are a superset of Go channels.  In particular, [SynchronousQueue](http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/SynchronousQueue.html) and the newly introduced [LinkedTransferQueue](http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/LinkedTransferQueue.html) can be used like Go channels.  It is worth emphasizing that they also have functionality beyong what Go channels provide.  The Go channels were intentionally designed to be minimally featured - they are constricted to be used in particular ways that facilitate the Go style of concurrent programming.  The go-lightly library similarly simplifies Java's TransferQueue to a minimal set of supported operations.  However, if you really need it, you can always [grab the embedded TransferQueue](#need-wiki-link) out of the go-lightly channel and work with it directly through Clojure's Java interop features.
@@ -259,16 +268,6 @@ The second Go timeout example above uses an explicit return statement that is no
 The usage scenarios around these three options are discussed [in the wiki](#need-wiki-link).
 
 
-
-## Misc Notes to put somewhere
-
-### Misc Note 1
-
-When working with Go-style channels, it is very important to think through ordering of operations.  The promise of CSP-style concurrency is that you can apply standard linear thinking to concurrent applications.  You have to carefully consider where you need synchronization and where you do not.  That means paying attention to what operations will block.  Even though you don't have to think about locks, mutexes and semaphores, you can still code yourself into race conditions and deadlocks with Go channels and Go routines if you reason incorrectly.
-
-### Misc Note 2
-
-You can put `false` on a Channel or BufferedChannel, but you cannot put `nil`.  The underlying LinkedBlockingQueue and LinkedTransferQueue will throw a NullPointerException if you try.  This allows the go-lightly library to interpret `nil` from a `take`, `peek` or `select` as "nothing to be read", whereas false is an actual value on the queue that will be returned from a read.
 
 
 ## A note on namespaces

@@ -48,3 +48,17 @@ will run all three of those targets sequentially.
 Copyright © 2012 Michael Peterson (and Alexey Kachayev where noted)
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+
+---------
+
+## Misc Notes to put somewhere
+
+### Misc Note 1
+
+When working with Go-style channels, it is very important to think through ordering of operations.  The promise of CSP-style concurrency is that you can apply standard linear thinking to concurrent applications.  You have to carefully consider where you need synchronization and where you do not.  That means paying attention to what operations will block.  Even though you don't have to think about locks, mutexes and semaphores, you can still code yourself into race conditions and deadlocks with Go channels and Go routines if you reason incorrectly.
+
+### Misc Note 2
+
+You can put `false` on a Channel or BufferedChannel, but you cannot put `nil`.  The underlying LinkedBlockingQueue and LinkedTransferQueue will throw a NullPointerException if you try.  This allows the go-lightly library to interpret `nil` from a `take`, `peek` or `select` as "nothing to be read", whereas false is an actual value on the queue that will be returned from a read.
+
