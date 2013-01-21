@@ -5,16 +5,16 @@
 * Go range == Clojure while: http://golangtutorials.blogspot.com/2011/06/channels-in-go-range-and-select.html
 X Add more type hinting to core
 * Finish blog comparing webcrawler implementations
-- Finish revised README
-- Tag existing GitHub repo and publish that tag on blog entries 1-5
+O Finish revised README
+X Tag existing GitHub repo and publish that tag on blog entries 1-5
 * Benchmark webcrawler-interop vs. webcrawler-typedChannels
-* jvisualvm analysis of Clojure chinese whispers example
-* Publish TypedChannels version to GitHub
-* Learn how to package for and publish to Clojars
+X jvisualvm analysis of Clojure chinese whispers example
+X Publish TypedChannels version to GitHub
+O Learn how to package for and publish to Clojars
 * Restructure go-lightly into go-lightly and go-lightly-examples lein projects?
 * Publish answer on Stackoverflow about doing Go concurrency in Clojure: link to go-lightly TypedChannel version out
 * Fix font on blogs (color older entries and get the font face correct so looks right on Windows)
-* Start go-lightly wiki on GitHub to see how it works and how to link to it from the README
+X Start go-lightly wiki on GitHub to see how it works and how to link to it from the README
 * Read: man select_tut
 * Read source code of Clojure case macro
 * Add selectf: options:'
