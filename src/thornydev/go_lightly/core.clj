@@ -99,7 +99,7 @@
   (peek [this] (.peek q))
   (size [this] (.size q))
   (clear [this] (.clear q))
-  
+
   Object
   (toString [this]
     (let [stat-str (when-not @(.open? this) ":closed ")]
@@ -152,7 +152,7 @@
 
 (defn unprefer! [channel]
   "Modifies the channel to remove preferred status in a select
-  statement, so it will be no longer be preferentially read 
+  statement, so it will be no longer be preferentially read
   from over a non-preferred channel."
   (reset! (.prefer? channel) false)
   channel)
@@ -215,7 +215,7 @@
 
 (defn- choose-tuple
   "From the list of 'ready channels' passed in, selects one at random,
-  takes its ready value and returns a tuple (vector) of the 
+  takes its ready value and returns a tuple (vector) of the
   channel-read-from and the value read:  [chan val]"
   [ready-chans]
   (let [ch (nth ready-chans (rand-int (count ready-chans)))]
@@ -284,7 +284,36 @@
 ;;    [ch1 #(println %)]
 ;;    [ch2 #(println %)]
 ;;    [:default #(println "nada")]))
+
+;; (defn data-macro []
+;;   (selectf
+;;    ch1 #(println %)
+;;    ch2 #(println %)
+;;    tch ;; timeout-channel will need to take an fn with no args
+;;    :default #(println "nada")))
 ;; END DEBUG
+
+(defn partition-bifurcate
+  "Partition a collection into two vectors. The first passes
+  the predicate test of fn +f+, the second fails it.  Returns
+  a vector of two vectors.  Non-lazy."
+  [f coll]
+  (reduce (fn [[vecyes vecno] value]
+            (if (f value)
+              [(conj vecyes value) vecno]
+              [vecyes (conj vecno  value)])) [[] []] coll))
+
+(defn selectm [& args]
+  (binding [*choose-fn* choose-tuple]
+    (let [chfnmap (apply hash-map args)
+          [keywords chans] (partition-bifurcate keyword? (reduce #(conj % %2) [] (keys chfnmap)))
+          choice (doselect chans nil (first keywords))]
+
+      ;; invoke the associated fn
+      (if choice
+        ((chfnmap (nth choice 0)) (nth choice 1))
+        ((chfnmap (first keywords))))
+      )))
 
 (defn selectf [& tuples]
   (binding [*choose-fn* choose-tuple]
@@ -310,7 +339,7 @@
    will be returned."
   ([timeout chan]
      (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
-  
+
   ([timeout chan & channels]
      (binding [*choose-fn* choose-val]
        (doselect (conj channels chan) timeout nil))))
