@@ -190,29 +190,58 @@
 
 ;; ---[ select and helper fns ]--- ;;
 
+;; specified by the version of select you call
+;; select wants choose-val
+;; selectf wants choose-tuple, which returns the channel
+;; with the val taken off it
+(def ^:private ^:dynamic *choose-fn*)
+
 (defn- now [] (System/currentTimeMillis))
 
 (defn- timed-out? [start duration]
   (when duration
     (> (now) (+ start duration))))
 
-(defn- choose [ready-chans]
+;; NOTE: the choose methods have a race condition issue
+;; they are assuming these ready chans are still ready but if another thread
+;; grabs the value between the peek and take, the select could hang indefinitely
+;; the choose methods need to have a very short .poll timeout and if nil is
+;; returned, they need to kick back out to have the select cycle start over
+(defn- choose-val
+  "From the list of 'ready channels' passed in, selects one at random,
+  takes its ready value and returns it."
+  [ready-chans]
   (take (nth ready-chans (rand-int (count ready-chans)))))
 
-(defn- filter-ready [chans]
+(defn- choose-tuple
+  "From the list of 'ready channels' passed in, selects one at random,
+  takes its ready value and returns a tuple (vector) of the 
+  channel-read-from and the value read:  [chan val]"
+  [ready-chans]
+  (let [ch (nth ready-chans (rand-int (count ready-chans)))]
+    [ch (take ch)]))
+
+(defn- filter-ready
+  "Filters the list of channels passed in to find all that have a
+  ready value and returns a seq of 'ready channels'."
+  [chans]
   (seq (doall (filter #(not (nil? (peek %))) chans))))
 
-(defn- attempt-select [pref-chans reg-chans]
-  (if-let [ready-list (filter-ready pref-chans)]
-    (choose ready-list)
-    (when-let [ready-list (filter-ready reg-chans)]
-      (choose ready-list))))
+(defn- attempt-select
+  "First attempts to take a value from a ready preferred channel.
+  If not successful, attempts to take a value from a ready non-preferred
+  channel. Returns the value it took from a channel or nil if none ready."
+  [pref-chans reg-chans]
+  (if-let [ready-chans (filter-ready pref-chans)]
+    (*choose-fn* ready-chans)
+    (when-let [ready-chans (filter-ready reg-chans)]
+      (*choose-fn* ready-chans))))
 
 (defn- probe-til-ready [pref-chans reg-chans timeout]
   (let [start (now)]
-    (loop [ready-chan nil mcsec 200]
+    (loop [chan-val nil mcsec 200]
       (cond
-       ready-chan ready-chan
+       chan-val chan-val
        (timed-out? start timeout) nil
        :else (do (Thread/sleep 0 mcsec)
                  (recur (attempt-select pref-chans reg-chans)
@@ -247,13 +276,32 @@
 
 ;; ---[ public select fns ]--- ;;
 
+;; DEBUG
+;; (declare selectf)
+
+;; (defn data-all-the-things-version []
+;;   (selectf
+;;    [ch1 #(println %)]
+;;    [ch2 #(println %)]
+;;    [:default #(println "nada")]))
+;; END DEBUG
+
+(defn selectf [& tuples]
+  (binding [*choose-fn* choose-tuple]
+    (let [chfnmap (into {} tuples)
+          chans (filter (complement keyword?) (reduce #(conj % (first %2)) [] tuples))
+          choice (doselect chans 500 nil)
+          f (chfnmap (nth choice 0))]
+      (f (nth choice 1)))))
+
 (defn select
   "Select one message from the channels passed in. Blocks until a
    message can be read from a channel."
   ([chan] (take chan))
 
   ([chan & channels]
-     (doselect (conj channels chan) nil nil)))
+     (binding [*choose-fn* choose-val]
+       (doselect (conj channels chan) nil nil))))
 
 (defn select-timeout
   "Like select, selects one message from the channel(s) passed in
@@ -264,7 +312,8 @@
      (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
   
   ([timeout chan & channels]
-     (doselect (conj channels chan) timeout nil)))
+     (binding [*choose-fn* choose-val]
+       (doselect (conj channels chan) timeout nil))))
 
 (defn select-nowait
   "Like select, selects one message from the channel(s) passed in
@@ -272,11 +321,12 @@
    ready, it immediately returns nil or the sentinel keyword value
    passed in as the last argument."
   [& channels-or-sentinel]
-  (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
-        result (apply doselect-nowait chans)]
-    (if (and (nil? result) (seq? sentinel))
-      (first sentinel)
-      result)))
+  (binding [*choose-fn* choose-val]
+    (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
+          result (apply doselect-nowait chans)]
+      (if (and (nil? result) (seq? sentinel))
+        (first sentinel)
+        result))))
 
 
 ;; ---[ channels to collection/sequence conversions ]--- ;;
