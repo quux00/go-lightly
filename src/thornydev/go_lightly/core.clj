@@ -276,23 +276,6 @@
 
 ;; ---[ public select fns ]--- ;;
 
-;; DEBUG
-;; (declare selectf)
-
-;; (defn data-all-the-things-version []
-;;   (selectf
-;;    [ch1 #(println %)]
-;;    [ch2 #(println %)]
-;;    [:default #(println "nada")]))
-
-;; (defn data-macro []
-;;   (selectf
-;;    ch1 #(println %)
-;;    ch2 #(println %)
-;;    tch ;; timeout-channel will need to take an fn with no args
-;;    :default #(println "nada")))
-;; END DEBUG
-
 (defn partition-bifurcate
   "Partition a collection into two vectors. The first passes
   the predicate test of fn +f+, the second fails it.  Returns
@@ -303,10 +286,12 @@
               [(conj vecyes value) vecno]
               [vecyes (conj vecno  value)])) [[] []] coll))
 
-(defn selectm [& args]
+(defn selectf [& args]
   (binding [*choose-fn* choose-tuple]
     (let [chfnmap (apply hash-map args)
-          [keywords chans] (partition-bifurcate keyword? (reduce #(conj % %2) [] (keys chfnmap)))
+          [keywords chans] (partition-bifurcate
+                            keyword?
+                            (reduce #(conj % %2) [] (keys chfnmap)))
           choice (doselect chans nil (first keywords))]
 
       ;; invoke the associated fn
@@ -315,10 +300,12 @@
         ((chfnmap (first keywords))))
       )))
 
-(defn selectf [& tuples]
+(defn selectd [& tuples]
   (binding [*choose-fn* choose-tuple]
     (let [chfnmap (into {} tuples)
-          chans (filter (complement keyword?) (reduce #(conj % (first %2)) [] tuples))
+          chans (filter (complement keyword?) (reduce
+                                               #(conj % (first %2))
+                                               [] tuples))
           choice (doselect chans 500 nil)
           f (chfnmap (nth choice 0))]
       (f (nth choice 1)))))

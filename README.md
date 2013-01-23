@@ -28,6 +28,10 @@ Go-lightly has been so far tested with Clojure 1.4.  I intend to ensure it is co
 The core go-lightly library has no dependencies beyond Clojure and Java 7.  However, some of the example code requires Zach Tellman's lamina library, since I played with ways to emulate some Go-concurrency programming features using lamina.
 
 
+## Getting Started
+
+I am in the process of documenting the [go-lightly wiki](https://github.com/midpeter444/go-lightly/wiki) for detailed examples.  In particular, see the "[learn from the REPL](https://github.com/midpeter444/go-lightly/wiki/Tutorial:-Learn-go%E2%88%92lightly-at-the-REPL)" section for a crash-course overview.
+
 
 ## Go routines
 
