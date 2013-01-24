@@ -338,28 +338,29 @@
         )
       (is (= (into #{:baz} (range 20))
              (set (drain result-ch))))
+
+      ;; now should read from unpreferred
+      (selectf ch1 #(put result-ch %)
+              ch2 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch3 #(throw (RuntimeException. (str "should not have selected " %))))
+      (is (= :foo (take result-ch)))
       
-      ;; (testing "make a channel a prefered after creating"
-      ;;   ;; prefer! modifies the channel in place
-      ;;   (prefer! ch3)
-      ;;   (is (preferred? ch3))
-      ;;   (dotimes [i 10]
-      ;;     (is (= :quux (select ch1 ch2 ch3)))))
+      (selectf ch2 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch3 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch4 #(put result-ch %))
+      (is (= :quux (take result-ch)))
 
-      ;; (testing "make channel unpreferred should now allow equal
-      ;;           choice between remaining non-empty non-preferred channels"
-      ;;   ;; unprefer! modifies the channel in place
-      ;;   (unprefer! ch3)
-      ;;   (is (not (preferred? ch3)))
+      (testing "make channel unpreferred - should no longer be preferentially read"
+        (put-20 ch2 :bar)  
+        (put-20 ch3 :baz)  
+        (unprefer! ch3)
+        (dotimes [_ 20]
+          (selectf ch1 #(throw (RuntimeException. (str "should not have selected " %)))
+                   ch2 #(put result-ch %)
+                   ch3 #(throw (RuntimeException. (str "should not have selected " %)))
+                   ch4 #(throw (RuntimeException. (str "should not have selected " %)))))
+        (is (= #{:bar} (set (drain result-ch)))))))
 
-      ;;   (loop [cnt 1000 selected #{:go-lightly/timeout}]
-      ;;     (cond
-      ;;      (zero? cnt) (is false "After 1000 checks did not see entry of each channel")
-      ;;      (= #{:foo :quux :go-lightly/timeout} selected) (is true)
-      ;;      :else (recur (dec cnt)
-      ;;                   (conj selected (select-timeout 20 ch2 ch1 ch3))))))
-
-      ))
   (stop))
 
 
@@ -550,12 +551,12 @@
           (while (nil? (peek ch))))
 
         (let [seqch (drain ch)]
-          (is (= 1 (count seqch)))
+          (is (= 20 (count seqch)))
           (is (= 0 (first seqch))))
 
-        (let [seqch (drain ch)]
-          (is (= 1 (count seqch)))
-          (is (= 1 (first seqch))))
+        ;; (let [seqch (drain ch)]
+        ;;   (is (= 1 (count seqch)))
+        ;;   (is (= 1 (first seqch))))
         )
       )
     (testing "draining a sync channel with no pending put returns empty seq"
