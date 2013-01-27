@@ -551,12 +551,12 @@
           (while (nil? (peek ch))))
 
         (let [seqch (drain ch)]
-          (is (= 20 (count seqch)))
+          ;; the behavior of drain on a synchronous channel is undefined
+          ;; on some systems it only returns 1 value, on others all 20
+          ;; only guarantee is that it returns at least 1 value if there
+          ;; is anything pending on the channel
+          (is (> (count seqch)) 0)
           (is (= 0 (first seqch))))
-
-        ;; (let [seqch (drain ch)]
-        ;;   (is (= 1 (count seqch)))
-        ;;   (is (= 1 (first seqch))))
         )
       )
     (testing "draining a sync channel with no pending put returns empty seq"
@@ -605,4 +605,4 @@
         (is (= (zero? (size ch)))))))
   (stop))
 
-(println (run-tests 'thornydev.go-lightly.core-test))
+;; (println (run-tests 'thornydev.go-lightly.core-test))

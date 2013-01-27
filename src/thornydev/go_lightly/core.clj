@@ -11,9 +11,9 @@
 
 (defmacro go
   "Launches a Clojure future as a 'go-routine' and returns the future.
-   It is not necessary to keep a reference to this future, however.
-   Instead, you can call the accompanying stop function to
-   shutdown (cancel) all futures created by this function."
+  It is not necessary to keep a reference to this future, however.
+  Instead, you can call the accompanying stop function to
+  shutdown (cancel) all futures created by this function."
   [& body]
   `(let [fut# (future ~@body)]
      (swap! inventory conj fut#)
@@ -21,12 +21,12 @@
 
 (defn stop
   "Stop (cancel) all futures started via the go macro.
-   This should only be called when you are finished with
-   all go routines running in your app, ideally at the end
-   of the program.  It can be reused on a new set of go
-   routines, as long as they were started after this stop
-   fn returned, as it clears an cached of remembered go
-   routines that could be subject to a race condition."
+  This should only be called when you are finished with
+  all go routines running in your app, ideally at the end
+  of the program.  It can be reused on a new set of go
+  routines, as long as they were started after this stop
+  fn returned, as it clears an cached of remembered go
+  routines that could be subject to a race condition."
   []
   (doseq [f @inventory] (future-cancel f))
   (reset! inventory [])
@@ -34,22 +34,37 @@
 
 (defn shutdown
   "Stop (cancel) all futures started via the go macro and
-   then call shutdown-agents to close down the entire Clojure
-   agent/future thread pool."
+  then call shutdown-agents to close down the entire Clojure
+  agent/future thread pool."
   []
   (stop)
   (shutdown-agents))
 
 
+(defmacro gox
+  "Form of go macro that wraps the body in a try/catch that ignores
+  InterruptedException and prints the stack trace for any other exception
+  that is thrown.  Useful, since exceptions in Clojure futures do not
+  get printed out.  The InterruptedException is present to allow you to
+  write never-ending go routines that can be cancelled with stop and
+  and print out an InterruptedException to the console/REPL when it is
+  cancelled."
+  [& body]
+  `(let [fut# (future (~'try ~@body
+                            ~'(catch InterruptedException ie)
+                            ~'(catch Exception e (.printStackTrace e))))]
+     (swap! inventory conj fut#)
+     fut#))
+
 (defmacro go&
   "Launch a 'go-routine' like deamon Thread to execute the body.
-   This macro does not yield a future so it cannot be dereferenced.
-   Instead it returns the Java Thread itself.
+  This macro does not yield a future so it cannot be dereferenced.
+  Instead it returns the Java Thread itself.
 
-   It is intended to be used with channels for communication
-   between threads.  This thread is not part of a managed Thread
-   pool so cannot be directly shutdown.  It will stop either when
-   all non-daemon threads cease or when you stop it some ad-hoc way."
+  It is intended to be used with channels for communication
+  between threads.  This thread is not part of a managed Thread
+  pool so cannot be directly shutdown.  It will stop either when
+  all non-daemon threads cease or when you stop it some ad-hoc way."
   [& body]
   `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
 
