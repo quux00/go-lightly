@@ -2,138 +2,141 @@
   (:refer-clojure :exclude [peek take])
   (:require [thornydev.go-lightly.core :refer :all]))
 
-(def continue? (atom true))
+;; Clojure version of a load balancer using go-lightly routines and channels
+;; Based on Go version presented by Rob Pike in 2010 Google IO Conf and
+;; 2012 Heroku conf:
+;;  Concurrency is not Parallelism: http://vimeo.com/49718712
+;;  slides here: https://rspace.googlecode.com/hg/slide/concur.html#landing-slide
 
-;; ---[ Requestors ]--- ;;
+(def ^:dynamic *nworkers* 5)
+(def ^:dynamic *requests-to-process* 100)
 
-;; Request => run this fn and when done send me the answer on the channel I give you
+(def results (atom []))
+
+(declare load-or-id init-workers)
+
+;; ---[ data structures ]--- ;;
+
+;; (def balancer (delay {:pool (apply sorted-set-by load-or-id (init-workers))
+;;                       :done-ch (channel 5000)}))
+
+;; ---[ fns ]--- ;;
+
+(defn prf [& vals]
+  (let [s (apply str (interpose " " (map #(if (nil? %) "nil" %) vals)))]
+    (print (str s "\n")) (flush)
+    s))
+
+(defn load-or-id
+  "Comparator function for sorted-map-by"
+  [w1 w2]
+  (if (= (:pending @w1) (:pending @w2))
+    (< (:index @w1) (:index @w2))
+    (< (:pending @w1) (:pending @w2))))
+
+
+;; ---[ requester fns ]--- ;;
 
 (defn calc-tau []
-  (Thread/sleep (min 1000 (rand-int 20000)))
+  (Thread/sleep (min 500 (rand-int 5000)))
   (* 2 Math/PI))
 
-;; Request
-{:operation calc-tau     ;; op to perform
- :channel (channel)}  ;; channel to return result on
+(defn further-process [result]
+  (swap! results conj result)
+  (print (str "request processed: " result ": " (count @results) "\n")) (flush)
+  ;; (print ".") (flush)
+  )
 
-(defn further-process [result-data]
-  (println "result:" result-data))
-
-;; requester func
-(defn requester [work-ch]
-  (let [ch (channel)]
-    ;; send request
-    (put work-ch {:operation calc-tau
-                  :channel ch})
-    (further-process (take ch)) ;; wait for answer and do more with it
-    ))
-
-(defn create-requests
-  "Main loop for creating requests onto the work channel"
+(defn requester
+  "A single requester looping infinitely to put work requests on the work channel"
   [work-ch]
-  (while @continue?
-    (Thread/sleep (rand-int 2000))
+  (try
+    (let [ch (channel)]
+      (loop []
+        (Thread/sleep (rand-int 250))
+        (put work-ch {:operation calc-tau, :result-ch ch})  ;; send request
+        (-> (take ch)
+            further-process)
+        (recur)))
+    (catch InterruptedException ie)  ;; ignore => thrown when cancelled at end
+    (catch Exception e (prf "ERROR in requester:" (.getMessage e) "\n"))))
+
+(defn start-all-requesters [work-ch]
+  (doseq [_ (range (* 2 *nworkers*))]
     (go (requester work-ch))))
 
 
+;; ---[ worker fns ]--- ;;
 
-
-;; ---[ Workers ]--- ;;
-
-(def ^:dynamic *nworkers* 4)
-
-;; pool of workers
-(def pool (atom nil))
-
-;; Note that the worker is just data -> functions do the work, not objects
-;; in this way Go is much like Clojure or a FP style, but not in others
 (defn init-workers []
   (for [i (range *nworkers*)]
-    {:index i, :pending 0, :requests-ch (channel 50000)}))
+    (atom {:index i, :pending 0, :completed 0, :requests-ch (channel 5000)})))
 
-(defn load-or-id
-  [w1 w2]
-  (if (= (:pending w1) (:pending w2))
-    (< (:index w1) (:index w2))
-    (< (:pending w1) (:pending w2))))
+(defn work [worker done-ch]
+  (loop []
+    (let [req (take (:requests-ch @worker))
+          f (:operation req)]
+        (put (:result-ch req) (f)) ;; sync channel => requester waits for result
+        (put done-ch worker))      ;; buffered channel => worker mvs onto next task
+    (recur)))
 
-(defn init-worker-pool []
-  (reset! pool (apply sorted-set-by load-or-id (init-workers))))
+(defn start-all-workers [bal]
+  (doseq [w (:pool bal)]
+    (go (work w (:done-ch bal)))))
 
-;; Example Worker
-{:requests-ch (channel 1000) ;; buffered channel of work to do
- :pending  22                ;; count of pending tasks
- :index    3}                ;; index in the heap
-
-(defn work [worker done-chan]
-  
-  )
-
-
-;; ---[ Balancer ]--- ;;
-
-;; will this only be called on one thread at a time or
-;; do we need to worry about thread safety?
-(defn dispatch [balancer request]
-  (let [pool (:pool balancer)
-        worker (disj pool (first pool))
-        (put (:requests-ch worker) request)
-        worker2 (update-in worker [:pending] inc)]
-    (assoc-in balancer [:pool] (conj pool worker2))))
+;; ---[ balancer fns ]--- ;;
 
 (defn completed [balancer worker]
-  (assoc-in balancer [:pool]
-            (-> (:pool balancer)
-                (disj worker)
-                (conj (update-in worker [:pending] dec))))
-  )
+  (let [pool (disj (:pool balancer) worker)]
+    (swap! worker #(-> %
+                       (update-in [:pending] dec)
+                       (update-in [:completed] inc)))    
+    (assoc-in balancer [:pool] (conj pool worker))))
 
-;; (defn balance
-;;   "@param balancer - ?
-;;    @param work-chan - channel of requests"
-;;   [balancer work-ch]
-;;   (let [bal (selectf
-;;              work-ch             (fn [req]) (dispatch balancer req)
-;;              (:done-ch balancer) (fn [wrkr] (completed balancer wrkr)))]
-;;     (recur bal work-ch)))
+(defn dispatch [balancer request]
+  (let [worker (first (:pool balancer))
+        pool   (disj (:pool balancer) worker)]
+    (put (:requests-ch @worker) request)
+    (swap! worker update-in [:pending] inc)
+    (->> worker
+         (conj pool)
+         (assoc-in balancer [:pool]))))
 
-;; TODO: can more than one thread can this simultaneously?
-;;       if so, may need to have balancer be an atom or even a ref?
-(defn balance
-  "@param balancer - ?
-   @param work-chan - channel of requests"
-  [balancer work-ch]
-  (-> (selectf
-       work-ch             (fn [req]) (dispatch balancer req)
-       (:done-ch balancer) (fn [wrkr] (completed balancer wrkr)))
-    (recur work-ch)))
+(defn balance [balcr work-ch]
+  (try
+    (loop [bal balcr]
+      (if (< (count @results) *requests-to-process*)
+        (do (-> (selectf
+                 work-ch        (fn [req] (dispatch bal req))
+                 (:done-ch bal) (fn [wrkr] (completed bal wrkr))
+                 (timeout-channel 200) (fn [_] bal))
+                recur))
+        (do (prf "> balancer shutting down:") (clojure.pprint/pprint bal) (println))))
+    (catch Exception e (println e))))
 
-;; Notes
-;; load balancer has a single channel for all the requests to come in on
-;; load balancer has a single "done" for all the workers to signal on
+(defn- report [work-ch]
+  (when (< (size work-ch) 20)
+    (print "work chan:")
+    (clojure.pprint/pprint work-ch))
+  (println "sz results:" (count @results)))
 
-(defn report []
-  ;; printout state of pool
-  ;; printout results (first 10 or something?)
-  )
+(defn- init []
+  (reset! results []))
+
+(defn- create-balancer []
+  {:pool (apply sorted-set-by load-or-id (init-workers))
+   :done-ch (channel 5000)})
 
 (defn -main [& args]
-  (println "Starting ...")
-  (init-worker-pool)
-
-  ;; let the games begin
-  (let [work-ch (channel 10000)
-        balancer {:pool (init-workers)
-                  :done-ch (channel)}]
-    (go (create-requests work-ch))
-    (go (balance balancer work-ch))
-    )
-  
-  ;; let the games run
-  (Thread/sleep (* 60 1000))
-
-  ;; announce the games have ended
-  (reset! continue? false)
-  (Thread/sleep (* 2 1000))
-  (report)
-  (shutdown))
+  (init)
+  (binding [*nworkers* (Integer/valueOf (or (first args) 5))
+            *requests-to-process* (Integer/valueOf (or (second args) 100))]
+    (println (format "Starting with ... %d workers, %d requesters, run until %d requests processed",
+                     *nworkers*, (* 2 *nworkers*), *requests-to-process*))
+    (let [balancer (create-balancer)
+          work-ch (channel 5000)]
+      (start-all-workers @balancer)
+      (start-all-requesters work-ch)
+      (balance @balancer work-ch)  ;; run balancer in main thread (blocks until done)
+      (report work-ch)))
+  (stop))

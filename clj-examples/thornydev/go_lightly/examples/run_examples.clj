@@ -13,7 +13,8 @@
    [thornydev.go-lightly.examples.search.google :as goog]
    [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]]
    [thornydev.go-lightly.examples.webcrawler.webcrawler :as crawl]
-   [thornydev.go-lightly.examples.whispers.chinese-whispers :as whisp])
+   [thornydev.go-lightly.examples.whispers.chinese-whispers :as whisp]
+   [thornydev.go-lightly.examples.load-balancer.balancer :as bal])
   (:gen-class))
 
 (declare run-programs)
@@ -92,11 +93,17 @@
    (= ":webcrawler" (first args)) (apply crawl/-main (rest args))
 
    ;; ---[ chinese-whispers ]--- ;;
-   ;; second arg is number of threads to start
+   ;; after :whipers or :whispers-as-go, first arg is number of threads to start
    ;; if you give these a lot of threads it takes a while to shut down
    ;; after the value prints out
    (= ":whispers" (first args)) (apply whisp/whispers-main (rest args))
    (= ":whispers-as-go" (first args)) (apply whisp/whispers-main (rest args))
+
+   ;; ---[ load-balancer ]--- ;;
+   ;; after :balancer,
+   ;;  arg1: number of worker go routines
+   ;;  arg2: number of requests to process before shutting down
+   (= ":webcrawler" (first args)) (apply crawl/-main (rest args))
    :else (run-programs args))
   
   (shutdown-agents))
