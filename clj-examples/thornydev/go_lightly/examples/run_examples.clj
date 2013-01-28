@@ -103,7 +103,7 @@
    ;; after :balancer,
    ;;  arg1: number of worker go routines
    ;;  arg2: number of requests to process before shutting down
-   (= ":webcrawler" (first args)) (apply crawl/-main (rest args))
+   (= ":balancer" (first args)) (apply bal/-main (rest args))
    :else (run-programs args))
   
   (shutdown-agents))

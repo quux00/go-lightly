@@ -7,18 +7,16 @@
 ;; 2012 Heroku conf:
 ;;  Concurrency is not Parallelism: http://vimeo.com/49718712
 ;;  slides here: https://rspace.googlecode.com/hg/slide/concur.html#landing-slide
+;;
+;;  https://twitter.com/nedbat/status/194452404794691584
 
 (def ^:dynamic *nworkers* 5)
 (def ^:dynamic *requests-to-process* 100)
+(def ^:dynamic *requesters-to-workers-ratio* 3)
 
-(def results (atom []))
-
-(declare load-or-id init-workers)
-
-;; ---[ data structures ]--- ;;
-
-;; (def balancer (delay {:pool (apply sorted-set-by load-or-id (init-workers))
-;;                       :done-ch (channel 5000)}))
+;; place to keep all the results
+;; (def results (atom []))
+(def nresults (atom 0))
 
 ;; ---[ fns ]--- ;;
 
@@ -42,10 +40,8 @@
   (* 2 Math/PI))
 
 (defn further-process [result]
-  (swap! results conj result)
-  (print (str "request processed: " result ": " (count @results) "\n")) (flush)
-  ;; (print ".") (flush)
-  )
+  (->> (swap! nresults inc)
+       (prf "request processed: " result ": ")))
 
 (defn requester
   "A single requester looping infinitely to put work requests on the work channel"
@@ -62,7 +58,7 @@
     (catch Exception e (prf "ERROR in requester:" (.getMessage e) "\n"))))
 
 (defn start-all-requesters [work-ch]
-  (doseq [_ (range (* 2 *nworkers*))]
+  (doseq [_ (range (* *requesters-to-workers-ratio* *nworkers*))]
     (go (requester work-ch))))
 
 
@@ -105,23 +101,25 @@
 (defn balance [balcr work-ch]
   (try
     (loop [bal balcr]
-      (if (< (count @results) *requests-to-process*)
+      (if (< @nresults *requests-to-process*)
         (do (-> (selectf
                  work-ch        (fn [req] (dispatch bal req))
                  (:done-ch bal) (fn [wrkr] (completed bal wrkr))
                  (timeout-channel 200) (fn [_] bal))
                 recur))
-        (do (prf "> balancer shutting down:") (clojure.pprint/pprint bal) (println))))
+        (do (prf ">>> balancer shutting down:"))))
     (catch Exception e (println e))))
 
-(defn- report [work-ch]
+(defn- report [bal work-ch]
+  (clojure.pprint/pprint bal)
+  (println)
   (when (< (size work-ch) 20)
     (print "work chan:")
     (clojure.pprint/pprint work-ch))
-  (println "sz results:" (count @results)))
+  (println "num results:" @nresults))
 
 (defn- init []
-  (reset! results []))
+  (reset! nresults 0))
 
 (defn- create-balancer []
   {:pool (apply sorted-set-by load-or-id (init-workers))
@@ -132,11 +130,12 @@
   (binding [*nworkers* (Integer/valueOf (or (first args) 5))
             *requests-to-process* (Integer/valueOf (or (second args) 100))]
     (println (format "Starting with ... %d workers, %d requesters, run until %d requests processed",
-                     *nworkers*, (* 2 *nworkers*), *requests-to-process*))
+                     *nworkers*, (* *requesters-to-workers-ratio* *nworkers*), *requests-to-process*))
     (let [balancer (create-balancer)
           work-ch (channel 5000)]
-      (start-all-workers @balancer)
+      (start-all-workers balancer)
       (start-all-requesters work-ch)
-      (balance @balancer work-ch)  ;; run balancer in main thread (blocks until done)
-      (report work-ch)))
-  (stop))
+      (balance balancer work-ch)  ;; run balancer in main thread (blocks until done)
+      (stop)
+      (Thread/sleep 100)
+      (report balancer work-ch))))
