@@ -11,9 +11,9 @@
 
 (defmacro go
   "Launches a Clojure future as a 'go-routine' and returns the future.
-   It is not necessary to keep a reference to this future, however.
-   Instead, you can call the accompanying stop function to
-   shutdown (cancel) all futures created by this function."
+  It is not necessary to keep a reference to this future, however.
+  Instead, you can call the accompanying stop function to
+  shutdown (cancel) all futures created by this function."
   [& body]
   `(let [fut# (future ~@body)]
      (swap! inventory conj fut#)
@@ -21,12 +21,12 @@
 
 (defn stop
   "Stop (cancel) all futures started via the go macro.
-   This should only be called when you are finished with
-   all go routines running in your app, ideally at the end
-   of the program.  It can be reused on a new set of go
-   routines, as long as they were started after this stop
-   fn returned, as it clears an cached of remembered go
-   routines that could be subject to a race condition."
+  This should only be called when you are finished with
+  all go routines running in your app, ideally at the end
+  of the program.  It can be reused on a new set of go
+  routines, as long as they were started after this stop
+  fn returned, as it clears an cached of remembered go
+  routines that could be subject to a race condition."
   []
   (doseq [f @inventory] (future-cancel f))
   (reset! inventory [])
@@ -34,22 +34,37 @@
 
 (defn shutdown
   "Stop (cancel) all futures started via the go macro and
-   then call shutdown-agents to close down the entire Clojure
-   agent/future thread pool."
+  then call shutdown-agents to close down the entire Clojure
+  agent/future thread pool."
   []
   (stop)
   (shutdown-agents))
 
 
+(defmacro gox
+  "Form of go macro that wraps the body in a try/catch that ignores
+  InterruptedException and prints the stack trace for any other exception
+  that is thrown.  Useful, since exceptions in Clojure futures do not
+  get printed out.  The InterruptedException is present to allow you to
+  write never-ending go routines that can be cancelled with stop and
+  and print out an InterruptedException to the console/REPL when it is
+  cancelled."
+  [& body]
+  `(let [fut# (future (~'try ~@body
+                            ~'(catch InterruptedException ie)
+                            ~'(catch Exception e (.printStackTrace e))))]
+     (swap! inventory conj fut#)
+     fut#))
+
 (defmacro go&
   "Launch a 'go-routine' like deamon Thread to execute the body.
-   This macro does not yield a future so it cannot be dereferenced.
-   Instead it returns the Java Thread itself.
+  This macro does not yield a future so it cannot be dereferenced.
+  Instead it returns the Java Thread itself.
 
-   It is intended to be used with channels for communication
-   between threads.  This thread is not part of a managed Thread
-   pool so cannot be directly shutdown.  It will stop either when
-   all non-daemon threads cease or when you stop it some ad-hoc way."
+  It is intended to be used with channels for communication
+  between threads.  This thread is not part of a managed Thread
+  pool so cannot be directly shutdown.  It will stop either when
+  all non-daemon threads cease or when you stop it some ad-hoc way."
   [& body]
   `(doto (Thread. (fn [] (do ~@body))) (.setDaemon true) (.start)))
 
@@ -99,7 +114,7 @@
   (peek [this] (.peek q))
   (size [this] (.size q))
   (clear [this] (.clear q))
-  
+
   Object
   (toString [this]
     (let [stat-str (when-not @(.open? this) ":closed ")]
@@ -152,7 +167,7 @@
 
 (defn unprefer! [channel]
   "Modifies the channel to remove preferred status in a select
-  statement, so it will be no longer be preferentially read 
+  statement, so it will be no longer be preferentially read
   from over a non-preferred channel."
   (reset! (.prefer? channel) false)
   channel)
@@ -190,29 +205,58 @@
 
 ;; ---[ select and helper fns ]--- ;;
 
+;; specified by the version of select you call
+;; select wants choose-val
+;; selectf wants choose-tuple, which returns the channel
+;; with the val taken off it
+(def ^:private ^:dynamic *choose-fn*)
+
 (defn- now [] (System/currentTimeMillis))
 
 (defn- timed-out? [start duration]
   (when duration
     (> (now) (+ start duration))))
 
-(defn- choose [ready-chans]
+;; NOTE: the choose methods have a race condition issue
+;; they are assuming these ready chans are still ready but if another thread
+;; grabs the value between the peek and take, the select could hang indefinitely
+;; the choose methods need to have a very short .poll timeout and if nil is
+;; returned, they need to kick back out to have the select cycle start over
+(defn- choose-val
+  "From the list of 'ready channels' passed in, selects one at random,
+  takes its ready value and returns it."
+  [ready-chans]
   (take (nth ready-chans (rand-int (count ready-chans)))))
 
-(defn- filter-ready [chans]
+(defn- choose-tuple
+  "From the list of 'ready channels' passed in, selects one at random,
+  takes its ready value and returns a tuple (vector) of the
+  channel-read-from and the value read:  [chan val]"
+  [ready-chans]
+  (let [ch (nth ready-chans (rand-int (count ready-chans)))]
+    [ch (take ch)]))
+
+(defn- filter-ready
+  "Filters the list of channels passed in to find all that have a
+  ready value and returns a seq of 'ready channels'."
+  [chans]
   (seq (doall (filter #(not (nil? (peek %))) chans))))
 
-(defn- attempt-select [pref-chans reg-chans]
-  (if-let [ready-list (filter-ready pref-chans)]
-    (choose ready-list)
-    (when-let [ready-list (filter-ready reg-chans)]
-      (choose ready-list))))
+(defn- attempt-select
+  "First attempts to take a value from a ready preferred channel.
+  If not successful, attempts to take a value from a ready non-preferred
+  channel. Returns the value it took from a channel or nil if none ready."
+  [pref-chans reg-chans]
+  (if-let [ready-chans (filter-ready pref-chans)]
+    (*choose-fn* ready-chans)
+    (when-let [ready-chans (filter-ready reg-chans)]
+      (*choose-fn* ready-chans))))
 
 (defn- probe-til-ready [pref-chans reg-chans timeout]
   (let [start (now)]
-    (loop [ready-chan nil mcsec 200]
+    (loop [chan-val nil mcsec 200]
       (cond
-       ready-chan ready-chan
+       chan-val chan-val
        (timed-out? start timeout) nil
        :else (do (Thread/sleep 0 mcsec)
                  (recur (attempt-select pref-chans reg-chans)
@@ -247,13 +291,48 @@
 
 ;; ---[ public select fns ]--- ;;
 
+(defn partition-bifurcate
+  "Partition a collection into two vectors. The first passes
+  the predicate test of fn +f+, the second fails it.  Returns
+  a vector of two vectors.  Non-lazy."
+  [f coll]
+  (reduce (fn [[vecyes vecno] value]
+            (if (f value)
+              [(conj vecyes value) vecno]
+              [vecyes (conj vecno  value)])) [[] []] coll))
+
+(defn selectf [& args]
+  (binding [*choose-fn* choose-tuple]
+    (let [chfnmap (apply hash-map args)
+          [keywords chans] (partition-bifurcate
+                            keyword?
+                            (reduce #(conj % %2) [] (keys chfnmap)))
+          choice (doselect chans nil (first keywords))]
+
+      ;; invoke the associated fn
+      (if choice
+        ((chfnmap (nth choice 0)) (nth choice 1))
+        ((chfnmap (first keywords))))
+      )))
+
+(defn selectd [& tuples]
+  (binding [*choose-fn* choose-tuple]
+    (let [chfnmap (into {} tuples)
+          chans (filter (complement keyword?) (reduce
+                                               #(conj % (first %2))
+                                               [] tuples))
+          choice (doselect chans 500 nil)
+          f (chfnmap (nth choice 0))]
+      (f (nth choice 1)))))
+
 (defn select
   "Select one message from the channels passed in. Blocks until a
    message can be read from a channel."
   ([chan] (take chan))
 
   ([chan & channels]
-     (doselect (conj channels chan) nil nil)))
+     (binding [*choose-fn* choose-val]
+       (doselect (conj channels chan) nil nil))))
 
 (defn select-timeout
   "Like select, selects one message from the channel(s) passed in
@@ -262,9 +341,10 @@
    will be returned."
   ([timeout chan]
      (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
-  
+
   ([timeout chan & channels]
-     (doselect (conj channels chan) timeout nil)))
+     (binding [*choose-fn* choose-val]
+       (doselect (conj channels chan) timeout nil))))
 
 (defn select-nowait
   "Like select, selects one message from the channel(s) passed in
@@ -272,11 +352,12 @@
    ready, it immediately returns nil or the sentinel keyword value
    passed in as the last argument."
   [& channels-or-sentinel]
-  (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
-        result (apply doselect-nowait chans)]
-    (if (and (nil? result) (seq? sentinel))
-      (first sentinel)
-      result)))
+  (binding [*choose-fn* choose-val]
+    (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
+          result (apply doselect-nowait chans)]
+      (if (and (nil? result) (seq? sentinel))
+        (first sentinel)
+        result))))
 
 
 ;; ---[ channels to collection/sequence conversions ]--- ;;

@@ -122,7 +122,7 @@
         (with-timeout 100
           (while (not= 10 (count @qlog))))
         (is (= (set results) @qlog)))))
-
+  
   (testing "test with mix of buffered and sync channels and go routines"
     (let [ch1 (channel 2)
           ch2 (channel 10)
@@ -155,7 +155,7 @@
       (is (nil? (select-timeout 50 ch)))
       (put ch false)
       (is (= false (select-timeout 50 ch)))
-      ;; you can't actually put nil on a LinkedBlockingQueue (or a LinkedTransferQueue)
+      ;; you can't put nil on a LinkedBlockingQueue (or LinkedTransferQueue)
       ;; the Java class throws an NPE
       (is (thrown? NullPointerException (put ch nil)))))
   
@@ -213,6 +213,154 @@
          :else (recur (dec cnt)
                       (conj selected (select-nowait ch1 ch2 ch3 ch4)))))
       ))
+  (stop))
+
+
+(deftest test-selectf-basic
+  (testing "pre-enqueue values on 3 sync channels and make sure get all"
+    (let [ch1 (channel)
+          ch2 (channel)
+          ch3 (channel)
+          acc (atom 0)]
+      (go (put ch1 1))
+      (go (put ch1 2))
+      (go (put ch2 10))
+      (go (put ch2 20))
+      (go (put ch3 100))
+      (go (put ch3 200))
+
+      (let [results (set
+                     (for [_ (range 6)]
+                       (selectf
+                        ch3 #(swap! acc + %)
+                        ch2 #(swap! acc + %)
+                        ch1 #(swap! acc + %))))]
+        (= #{1 3 13 113 133 333}))
+      (is (= 333 @acc))))
+
+  (testing "test with go routines adding more onto the sync channels"
+    (let [ch1 (channel)
+          ch2 (channel)
+          ch3 (channel)
+          qlog (atom #{})]
+      (go (put-with-sleeps-track-enqueues ch1 qlog))
+      (go (put-with-sleeps-track-enqueues ch2 qlog))
+      (go (put-with-sleeps-track-enqueues ch3 qlog))
+      (let [results (for [i (range 10)]
+                      (selectf ch1 #(identity %)
+                               ch2 #(identity %)
+                               ch3 #(identity %)))]
+        (is (= 10 (count results)))
+        (with-timeout 100
+          (while (not= 10 (count @qlog))))
+        (is (= (set results) @qlog)))))
+  (stop))
+
+
+(deftest test-selectf-with-default
+  (testing "single channel"
+    (let [ch (channel)]
+      (is (= :nada (selectf ch #(identity %)
+                            :default #(identity :nada))))
+      (go (put ch :foo))
+      (with-timeout 50 ;; wait for element to be on the channel
+        (while (nil? (peek ch))))
+      (is (= :foo (selectf ch #(identity %)
+                           :default #(identity :nada))))))
+
+  (testing "multiple channels (mixed sync and buffered)"
+    (let [ch1 (channel) ch2 (channel) ch3 (channel) ch4 (channel 10)
+          result-ch (channel 3000)]
+      (let [results (set
+                     (doall
+                      (for [_ (range 10)]
+                        (select-nowait ch1 ch2 :foo-sentinel))))]
+        (is (contains? results :foo-sentinel)))
+
+      (go (put-with-sleeps ch1 1))
+      (go (put-with-sleeps ch2 2))
+      (go (put-with-sleeps ch3 3))
+      (go (put-with-sleeps ch4 4))
+
+      (loop [cnt 2000]
+        (Thread/sleep 10)
+        (selectf ch1 #(put result-ch %)
+                 ch2 #(put result-ch %)
+                 ch3 #(put result-ch %)
+                 ch4 #(put result-ch %)
+                 :default #(put result-ch :default))
+        (cond
+         (zero? cnt) (is false "No match seen after 2000 cycles")
+         (= #{1 2 3 4 :default} (set (channel->seq result-ch))) (is true)
+         :else (recur (dec cnt))))
+      ))
+  (stop))
+
+
+(deftest test-selecf-with-timeout-channel
+  (testing "timeout channel with other channels"
+    (let [ch1 (channel)
+          ch2 (channel)
+          tch (timeout-channel 200)
+          result-ch (channel 2000)]
+      (go (put-with-sleeps ch1 1))
+      (go (put-with-sleeps ch1 2))
+      (loop [cnt 1500]
+        (Thread/sleep 2)
+        (selectf ch1 #(put result-ch %)
+                 ch2 #(put result-ch %)
+                 tch #(put result-ch %))
+        (cond
+         (zero? cnt) (is false "After 1500 did not see entry of each channel")
+         (= #{1 2 :go-lightly/timeout} (set (channel->vec result-ch))) (is true)
+         :else (recur (dec cnt))))
+      )
+    (stop)))
+
+;; TODO: convert this to use selectf
+(deftest test-selectf-with-preferred-channel
+  (testing "prefered channels are always read from first if values present"
+    (let [ch1 (channel)
+          ch2 (preferred-channel 100)
+          ch3 (preferred-channel 100)
+          ch4 (channel 100)
+          result-ch (channel 100)]
+      (go (put-20 ch1 :foo))
+      (put-20 ch2)  ;; values 0 .. 19
+      (put-20 ch3 :baz)  
+      (put-20 ch4 :quux)
+
+      (dotimes [_ 40]
+        (selectf ch1 #(throw (RuntimeException. (str "should not have selected " %)))
+                 ch2 #(put result-ch %)
+                 ch3 #(put result-ch %)
+                 ch4 #(throw (RuntimeException. (str "should not have selected " %))))
+        )
+      (is (= (into #{:baz} (range 20))
+             (set (drain result-ch))))
+
+      ;; now should read from unpreferred
+      (selectf ch1 #(put result-ch %)
+              ch2 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch3 #(throw (RuntimeException. (str "should not have selected " %))))
+      (is (= :foo (take result-ch)))
+      
+      (selectf ch2 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch3 #(throw (RuntimeException. (str "should not have selected " %)))
+              ch4 #(put result-ch %))
+      (is (= :quux (take result-ch)))
+
+      (testing "make channel unpreferred - should no longer be preferentially read"
+        (put-20 ch2 :bar)  
+        (put-20 ch3 :baz)  
+        (unprefer! ch3)
+        (dotimes [_ 20]
+          (selectf ch1 #(throw (RuntimeException. (str "should not have selected " %)))
+                   ch2 #(put result-ch %)
+                   ch3 #(throw (RuntimeException. (str "should not have selected " %)))
+                   ch4 #(throw (RuntimeException. (str "should not have selected " %)))))
+        (is (= #{:bar} (set (drain result-ch)))))))
+
   (stop))
 
 
@@ -403,12 +551,12 @@
           (while (nil? (peek ch))))
 
         (let [seqch (drain ch)]
-          (is (= 1 (count seqch)))
+          ;; the behavior of drain on a synchronous channel is undefined
+          ;; on some systems it only returns 1 value, on others all 20
+          ;; only guarantee is that it returns at least 1 value if there
+          ;; is anything pending on the channel
+          (is (> (count seqch)) 0)
           (is (= 0 (first seqch))))
-
-        (let [seqch (drain ch)]
-          (is (= 1 (count seqch)))
-          (is (= 1 (first seqch))))
         )
       )
     (testing "draining a sync channel with no pending put returns empty seq"
@@ -457,4 +605,4 @@
         (is (= (zero? (size ch)))))))
   (stop))
 
-(println (run-tests 'thornydev.go-lightly.core-test))
+;; (println (run-tests 'thornydev.go-lightly.core-test))
