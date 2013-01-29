@@ -26,7 +26,8 @@
 (defn sieve-main [& args]
   (let [chfirst (go/channel)]
     (go/go (generate chfirst))
-    (loop [i 10 ch chfirst]
+    (loop [i (Integer/valueOf (or (first args) 10))
+           ch chfirst]
       (when (pos? i)
         (let [prime (go/take ch)
               ch1 (go/channel)]

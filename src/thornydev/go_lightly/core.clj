@@ -315,15 +315,16 @@
         ((chfnmap (first keywords))))
       )))
 
-(defn selectd [& tuples]
-  (binding [*choose-fn* choose-tuple]
-    (let [chfnmap (into {} tuples)
-          chans (filter (complement keyword?) (reduce
-                                               #(conj % (first %2))
-                                               [] tuples))
-          choice (doselect chans 500 nil)
-          f (chfnmap (nth choice 0))]
-      (f (nth choice 1)))))
+;; this is the data-all-the-things version; currently going with the selectf version
+;; (defn selectd [& tuples]
+;;   (binding [*choose-fn* choose-tuple]
+;;     (let [chfnmap (into {} tuples)
+;;           chans (filter (complement keyword?) (reduce
+;;                                                #(conj % (first %2))
+;;                                                [] tuples))
+;;           choice (doselect chans 500 nil)
+;;           f (chfnmap (nth choice 0))]
+;;       (f (nth choice 1)))))
 
 (defn select
   "Select one message from the channels passed in. Blocks until a

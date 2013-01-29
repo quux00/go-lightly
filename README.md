@@ -30,7 +30,21 @@ The core go-lightly library has no dependencies beyond Clojure and Java 7.  Howe
 
 ## Getting Started
 
-I am in the process of documenting the [go-lightly wiki](https://github.com/midpeter444/go-lightly/wiki) for detailed examples.  In particular, see the "[learn from the REPL](https://github.com/midpeter444/go-lightly/wiki/Tutorial:-Learn-go%E2%88%92lightly-at-the-REPL)" section for a crash-course overview.
+You can get an overview of all features of the go-lightly library from the "[learn from the REPL](https://github.com/midpeter444/go-lightly/wiki/Tutorial:-Learn-go%E2%88%92lightly-at-the-REPL)" section of the wiki.
+
+The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in progress) covers additional notes and details not covered in the above tutorial.
+
+
+## Updates
+
+0.3.1 published on 28-Jan-2013.  It adds:
+
+* a `selectf` function, which is a select control structure modeled after the select from Go.
+* a load-balancer example (in clj-examples) that implements Pike's load-balancer exmaple in Go and shows why the `selectf` function is a necessary concept
+* a `gox` macro that acts like the go macro, but wraps everything in a try/catch that:
+  * ignores InterruptedException, allowing you to call (stop) on infinite go routines without any error printing to the screen
+  * catching any other Exception and printing to stdout, since exceptions thrown in a Clojure future get swallowed and make it hard to debug during development
+  * it is expected that you will using `gox` while developing and then change it to `go` for general availability/production, but you can stick with `gox` for production code if that suits you
 
 
 ## Go routines
