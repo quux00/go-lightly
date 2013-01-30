@@ -208,39 +208,19 @@ ch := make(chan int, 128)
 You use buffered channels whenever one or more threads needs to be pushing a stream of messages for one or more consumers to read and process on the other end.
 
 
-## select
-
-Go comes with a ready-made control structure called select. It provides a shorthand way to specify how to deal with multiple channels, as well as allow for timeouts and non-blocking behavior (via a "default" clause). It looks like a switch/case statement in Go, but is different in that all paths involving a channel are evaluated, rather than just picking the first one that is ready.
-
-The select statement is a central element in writing idiomatic Go concurrent applications.  In fact, Rob Pike, in his [Google IO 2012 presentation](http://www.youtube.com/watch?v=f6kdp27TYZs&feature=youtu.be)) on Go said:
-
-> "The select statement is a key part of why concurrency is built into Go as features of the language, rather than just a library. It's hard to do control structures that depend on libraries."
-
-Let's look at an example:
-
-```go
-select {
-case v1 := <-c1:
-    fmt.Printf("received %v from c1\n", v1)
-case v2 := <-c2:
-    fmt.Printf("received %v from c2\n", v2)
-}
-```
-
-This `select` evaluates two channels and there are four possible scenarios:
-
-1. c1 is ready to give a message, but c2 is not. The message from c1 is read into the variable v1 and the code clause for that first case is executed.
-2. c2 is ready to give a message, but c1 is not. v2 then is assigned to the value read from c2 and its code clause is executed.
-3. Both c1 and c2 are ready to give a message. One of them is randomly chosen for reading and execution of its code block. Note this means that you cannot depend on the order your clauses will be executed in.
-4. Neither c1 nor c2 are ready to give a message. The select will block until the first one is ready, at which point it will be read from the channel and execute the corresponding code clause.
-
-`select` statements in Go can also have timeouts or a default clause that executes immediately if none of the other cases are ready.  Examples are provided in [the wiki](https://github.com/midpeter444/go-lightly/wiki).
 
 ### select in go-lightly
 
-The go-lightly library provides select-like functionality, but not exactly like Go does.  At present go-lightly's select is a function (or rather a suite of functions), not a control structure.  However, a control structure version could certainly be written if it is warranted.
+The go-lightly library provides a couple of variations on the `select` operator:
 
-The select function is go-lightly is modeled after the `sync` function in the [Racket language](http://racket-lang.org/) (discussed in [one of my go-lightly blog entries](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html) in more detail).  You pass in one or more channels and/or buffered channels and it performs the same logic outlined above to return the value from the next channel when it is available.
+* `select`, which reads from the first available channel and returns that value
+* `selectf`, which is a control structure like Go's select, where you provide a function to call based on which channel is called
+* `select-nowait`, which is a variant of `select` except returns immediately if no channel has a ready value
+* `select-timeout`, which is a variant of `select` that takes a timeout value to return a sentinel timeout value if the timer goes off before a channel has a ready value
+
+#### `select` and `select-nowait`
+
+The `select` function is go-lightly is modeled after the `sync` function in the [Racket language](http://racket-lang.org/) (discussed in [one of my go-lightly blog entries](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html) in more detail).  You pass in one or more channels and/or buffered channels and it performs the same logic outlined above to return the value from the next channel when it is available.
 
 ```clj
 (def ch (go/channel))
@@ -258,6 +238,30 @@ If you don't want to block until a channel has a value, use `select-nowait`, whi
 user=> (select-nowait ch1 ch2 ch3 :bupkis)
 :bupkis
 ```
+
+#### `selectf`
+
+There are some situations in which you not only want to read the next ready value from multiple channels, but you need to know exactly which channel is was read from.  (The load balancer example in the clj-examples directory shows a use case of this.)  `selectf` acts like Go's select structure in that you provide pairs of arguments: the first one is the channel to read from and the second is the function to invoke if it is read.  That function takes one argument, which is the value read from the channel.
+
+You can also provide the keyword `:default` as a first argument with an accompanying function to invoke (which takes no args).  Like Go's default selector, this will be called immediately if no channel has ready value.
+
+You can provide it a timeout-channel to avoid unbounded waits:
+
+```clj
+(go/selectf ch1 (fn [v] (callme v "channel 1"))
+            ch2 (fn [v] (callme v "channel 2"))
+            (go/timeout-channel 100) #(println "timeout:" %))
+```
+
+You can provide a default clause to return immediately if no channel has a ready value:
+
+```clj
+(go/selectf ch1 (fn [v] (callme v "channel 1"))
+            ch2 (fn [v] (callme v "channel 2"))
+            :default #(println "no values ready"))
+```
+
+See the [learn at the REPL](https://github.com/midpeter444/go-lightly/wiki/Tutorial:-Learn-go%E2%88%92lightly-at-the-REPL) part of the wiki for some usage examples.
 
 ## Timeout operations on channel read/writes/selects
 
