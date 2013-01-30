@@ -10,8 +10,8 @@ The core constructs of the Go concurrency programming are:
 
 1. Go routines
 2. Synchronous (blocking) channels
-3. Asynchronous (non-blocking) channels
-4. A `select` operator that can reads the next available message from multiple channels
+3. Bounded, mostly asynchronous (non-blocking) channels
+4. A `select` operator that reads the next available message from multiple channels
 5. Timeout operations on channel read/writes/selects
 
 The go-lightly library provides all of these (plus a few extras) by wrapping features already provided in the JVM and Clojure.
@@ -46,6 +46,13 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
   * catching any other Exception and printing to stdout, since exceptions thrown in a Clojure future get swallowed and make it hard to debug during development
   * it is expected that you will using `gox` while developing and then change it to `go` for general availability/production, but you can stick with `gox` for production code if that suits you
 
+
+## TODO
+
+There is a race condition in the current implementation of select and selectf that needs to be handled correctly.
+
+
+# Documentation
 
 ## Go routines
 
