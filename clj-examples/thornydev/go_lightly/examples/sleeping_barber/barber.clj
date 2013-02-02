@@ -66,7 +66,7 @@
 
 
 (defn barber-available [barber barber-ch shop-state]
-  (if (> (count (:waiting-clients shop-state)) 0)  ;; (if (seq (:wc ss))
+  (if (seq (:waiting-clients shop-state))
     (let [client (first (:waiting-clients shop-state))]
       (prf
        (format "%s takes client %s from room (remaining clients: %d)",
@@ -84,14 +84,14 @@
       (-> (selectf
            clients-ch #(client-walked-in % barber-ch shop-state)
            barber-ch  #(barber-available % barber-ch shop-state))
-          prv  ;; uncomment to see the shop-state after each select
+          ;; prv  ;; uncomment to see the shop-state after each select
           (recur)))))
 
 (defn -main
   "This version has one thread/routine for continuously bringing
   clients into the shop and another thread that waits for either
-  clients to come in or barbers to become available, hanldes that
-  scenario and repeats."
+  clients to come in or barbers to become available, handles that
+  scenario and repeats. Each barber cutting hair has its own thread."
   [& args]
   (with-timeout (Integer/valueOf (or (first args) 2000))
     (let [clients-ch (channel)]
