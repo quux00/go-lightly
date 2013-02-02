@@ -74,7 +74,8 @@
 (declare closed?)
 
 (defprotocol GoChannel
-  (put [this val] "Put a value on a channel. May or may not block depending on type and circumstances.")
+  (put [this val] "Put a value on a channel. May or may not block depending on type and circumstances")
+  (poll [this] "Take the first value from a channel, but return nil if none present rather than block")
   (take [this] "Take the first value from a channel")
   (size [this] "Returns the number of values on the channel")
   (peek [this] "Retrieve, but don't remove, the first element on the channel")
@@ -88,6 +89,7 @@
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
 
   (take [this] (.take q))
+  (poll [this] (.poll q))
   (peek [this] (.peek q))
   (size [this] 0)
   (clear [this] (.clear q))
@@ -111,6 +113,7 @@
       (.put q val)
       (throw (IllegalStateException. "Channel is closed. Cannot 'put'."))))
   (take [this] (.take q))
+  (poll [this] (.poll q))
   (peek [this] (.peek q))
   (size [this] (.size q))
   (clear [this] (.clear q))
@@ -130,6 +133,7 @@
   (put [this val] (throw (UnsupportedOperationException.
                           "Cannot put values onto a TimeoutChannel")))
   (take [this] (.take q))
+  (poll [this] (.poll q))
   (peek [this] (.peek q))
   (size [this] (.size q))
   (clear [this] (throw (UnsupportedOperationException.
@@ -217,16 +221,22 @@
   (when duration
     (> (now) (+ start duration))))
 
+(defn- filter-ready
+  "Filters the list of channels passed in to find all that have a
+  ready value and returns a seq of 'ready channels'."
+  [chans]
+  (seq (doall (filter #(not (nil? (peek %))) chans))))
+
 ;; NOTE: the choose methods have a race condition issue
-;; they are assuming these ready chans are still ready but if another thread
-;; grabs the value between the peek and take, the select could hang indefinitely
-;; the choose methods need to have a very short .poll timeout and if nil is
-;; returned, they need to kick back out to have the select cycle start over
+;; they are assuming these ready chans are still ready but if another thread.
+;; The adopted solution is to use poll rather than take. If nothing is found
+;; then return nil and then the calling method try again (possiblity with
+;; a different channel).
 (defn- choose-val
   "From the list of 'ready channels' passed in, selects one at random,
   takes its ready value and returns it."
   [ready-chans]
-  (take (nth ready-chans (rand-int (count ready-chans)))))
+  (poll (nth ready-chans (rand-int (count ready-chans)))))
 
 (defn- choose-tuple
   "From the list of 'ready channels' passed in, selects one at random,
@@ -234,13 +244,7 @@
   channel-read-from and the value read:  [chan val]"
   [ready-chans]
   (let [ch (nth ready-chans (rand-int (count ready-chans)))]
-    [ch (take ch)]))
-
-(defn- filter-ready
-  "Filters the list of channels passed in to find all that have a
-  ready value and returns a seq of 'ready channels'."
-  [chans]
-  (seq (doall (filter #(not (nil? (peek %))) chans))))
+    [ch (poll ch)]))
 
 (defn- attempt-select
   "First attempts to take a value from a ready preferred channel.
@@ -278,7 +282,7 @@
         (probe-til-ready pref-chans reg-chans timeout)))))
 
 (defn- doselect-nowait
-  ([chan] (.poll (.q chan)))
+  ([chan] (poll chan))
 
   ([chan & channels]
      (doselect (conj channels chan) nil :nowait)))
@@ -301,7 +305,15 @@
               [(conj vecyes value) vecno]
               [vecyes (conj vecno  value)])) [[] []] coll))
 
-(defn selectf [& args]
+(defn selectf
+  "Control structure variable arity fn. Must be an even number of arguments where
+  the first is either a GoChannel to read from or the keyword :default. The second
+  arg is a function to call if the channel is read from.  Handler fns paired with
+  channels should accept one argument - the value read from the channel.  The
+  handler function paired with :default takes no args.  If no :default clause is
+  provided, it blocks until a value is read from a channel (which could include
+  a TimeoutChannel). Returns the value returned by the handler fn."
+  [& args]
   (binding [*choose-fn* choose-tuple]
     (let [chfnmap (apply hash-map args)
           [keywords chans] (partition-bifurcate
@@ -312,23 +324,11 @@
       ;; invoke the associated fn
       (if choice
         ((chfnmap (nth choice 0)) (nth choice 1))
-        ((chfnmap (first keywords))))
-      )))
-
-;; this is the data-all-the-things version; currently going with the selectf version
-;; (defn selectd [& tuples]
-;;   (binding [*choose-fn* choose-tuple]
-;;     (let [chfnmap (into {} tuples)
-;;           chans (filter (complement keyword?) (reduce
-;;                                                #(conj % (first %2))
-;;                                                [] tuples))
-;;           choice (doselect chans 500 nil)
-;;           f (chfnmap (nth choice 0))]
-;;       (f (nth choice 1)))))
+        ((chfnmap (first keywords)))))))
 
 (defn select
   "Select one message from the channels passed in. Blocks until a
-   message can be read from a channel."
+  message can be read from a channel."
   ([chan] (take chan))
 
   ([chan & channels]
@@ -337,9 +337,9 @@
 
 (defn select-timeout
   "Like select, selects one message from the channel(s) passed in
-   with the same behavior except that a timeout is in place that
-   if no message becomes available before the timeout expires, nil
-   will be returned."
+  with the same behavior except that a timeout is in place that
+  if no message becomes available before the timeout expires, nil
+  will be returned."
   ([timeout chan]
      (.poll (.q chan) timeout TimeUnit/MILLISECONDS))
 
@@ -349,9 +349,9 @@
 
 (defn select-nowait
   "Like select, selects one message from the channel(s) passed in
-   with the same behavior except that if no channel has a message
-   ready, it immediately returns nil or the sentinel keyword value
-   passed in as the last argument."
+  with the same behavior except that if no channel has a message
+  ready, it immediately returns nil or the sentinel keyword value
+  passed in as the last argument."
   [& channels-or-sentinel]
   (binding [*choose-fn* choose-val]
     (let [[chans sentinel] (parse-nowait-args channels-or-sentinel)
@@ -365,24 +365,24 @@
 
 (defn channel->seq
   "Takes a snapshot of all values on a channel *without* removing
-   the values from the channel. Returns a (non-lazy) seq of the values.
-   Generally recommended for use with a buffered channel, but will return
-   return a single value if a producer is waiting to put one on."
+  the values from the channel. Returns a (non-lazy) seq of the values.
+  Generally recommended for use with a buffered channel, but will return
+  return a single value if a producer is waiting to put one on."
   [ch]
   (seq (.toArray (.q ch))))
 
 (defn channel->vec
   "Takes a snapshot of all values on a channel *without* removing
-   the values from the channel. Returns a vector of the values.
-   Generally recommended for use with a buffered channel, but will return
-   return a single value if a producer is waiting to put one on."
+  the values from the channel. Returns a vector of the values.
+  Generally recommended for use with a buffered channel, but will return
+  return a single value if a producer is waiting to put one on."
   [ch]
   (vec (.toArray (.q ch))))
 
 (defn drain
   "Removes all the values on a channel and returns them as a non-lazy seq.
-   Generally recommended for use with a buffered channel, but will return
-   a pending transfer value if a producer is waiting to put one on."
+  Generally recommended for use with a buffered channel, but will return
+  a pending transfer value if a producer is waiting to put one on."
   [ch]
   (let [al (ArrayList.)]
     (.drainTo (.q ch) al)
@@ -390,12 +390,12 @@
 
 (defn lazy-drain
   "Lazily removes values from a channel. Returns a Cons lazy-seq until
-   it reaches the end of the channel.
-   Generally recommended for use with a buffered channel, but will return
-   on or more values one or more producer(s) is waiting to put a one or
-   more values on.  There is a race condition with producers when using."
+  it reaches the end of the channel.
+  Generally recommended for use with a buffered channel, but will return
+  on or more values one or more producer(s) is waiting to put a one or
+  more values on.  There is a race condition with producers when using."
   [ch]
-  (if-let [v (.poll (.q ch))]
+  (if-let [v (poll ch)]
     (cons v (lazy-seq (lazy-drain ch)))
     nil))
 

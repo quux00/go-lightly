@@ -38,10 +38,15 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 ## Updates
 
 **02-Feb-2013:**
+
+v. 0.3.2 published
+
+* race condition in the select functions was solved by adding a poll method to GoChannel (based on .poll from the Java concurrent queues)
 * Testing with Clojure 1.3, 1.4 and 1.5 complete.  See requirements section above for details.
 * sleeping barbers example added
 
 **28-Jan-2013**
+
 v. 0.3.1 published. It adds:
 
 * a `selectf` function, which is a select control structure modeled after the select from Go.
@@ -54,7 +59,7 @@ v. 0.3.1 published. It adds:
 
 ## TODO
 
-There is a race condition in the current implementation of select and selectf that needs to be handled correctly.
+Need to publish to Clojars.  0.3.2 will be the first version published for general availability.
 
 ----
 
