@@ -23,7 +23,7 @@ In this overview, I introduce these Go concepts using Go code examples and termi
 
 Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
-Go-lightly has been tested with Clojure 1.3.0, 1.4.0 and 1.5-RC4.  The core library (and its test) are compatible with all three versions.  Some of the exmaples will **not** run under 1.3, but all will run with 1.4 and 1.5.
+Go-lightly has been tested with Clojure 1.3.0, 1.4.0 and 1.5-RC4.  The core library (and its test) are compatible with all three versions.  Some of the examples will **not** run under 1.3, but all will run with 1.4 and 1.5.
 
 The core go-lightly library has no dependencies beyond Clojure and Java 7.  However, some of the example code requires Zach Tellman's lamina library, since I played with ways to emulate some Go-concurrency programming features using lamina.
 
@@ -45,7 +45,7 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 v. 0.3.1 published. It adds:
 
 * a `selectf` function, which is a select control structure modeled after the select from Go.
-* a load-balancer example (in clj-examples) that implements Pike's load-balancer exmaple in Go and shows why the `selectf` function is a necessary concept
+* a load-balancer example (in clj-examples) that implements Pike's load-balancer example in Go and shows why the `selectf` function is a necessary concept
 * a `gox` macro that acts like the go macro, but wraps everything in a try/catch that:
   * ignores InterruptedException, allowing you to call (stop) on infinite go routines without any error printing to the screen
   * catching any other Exception and printing to stdout, since exceptions thrown in a Clojure future get swallowed and make it hard to debug during development
