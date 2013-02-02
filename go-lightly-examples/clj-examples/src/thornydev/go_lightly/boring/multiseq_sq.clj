@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.multiseq-sq
+(ns thornydev.go-lightly.boring.multiseq-sq
   (:require [thornydev.go-lightly.core :as go])
   (:import java.util.concurrent.SynchronousQueue))
 

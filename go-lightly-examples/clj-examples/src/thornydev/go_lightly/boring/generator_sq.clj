@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.generator-sq
+(ns thornydev.go-lightly.boring.generator-sq
   (:require [thornydev.go-lightly.core :as go])
   (:import (java.util.concurrent SynchronousQueue)))
 

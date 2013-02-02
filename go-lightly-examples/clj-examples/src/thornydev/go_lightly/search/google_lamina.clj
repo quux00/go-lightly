@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.search.google-lamina
+(ns thornydev.go-lightly.search.google-lamina
   (:use lamina.core)
   (:import (java.util.concurrent TimeoutException)))
 

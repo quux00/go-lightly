@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.multiplex-kachayev
+(ns thornydev.go-lightly.boring.multiplex-kachayev
   (:use lamina.core))
 
 ;; Channels-driven concurrency with Clojure

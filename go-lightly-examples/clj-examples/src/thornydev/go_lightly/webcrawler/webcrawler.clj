@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.webcrawler.webcrawler
+(ns thornydev.go-lightly.webcrawler.webcrawler
   (:require [thornydev.go-lightly.core :as go]
             [net.cgrand.enlive-html :as enlive]
             [clojure.java.io :refer [as-url]]

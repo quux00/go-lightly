@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.whispers.chinese-whispers
+(ns thornydev.go-lightly.whispers.chinese-whispers
   (:require [thornydev.go-lightly.core :as go]))
 
 (defn whisper [left right]

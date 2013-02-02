@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.select-kachayev
+(ns thornydev.go-lightly.boring.select-kachayev
   (:require [lamina.core :as lam]))
 
 

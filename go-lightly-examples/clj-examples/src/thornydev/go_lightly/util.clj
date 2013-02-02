@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.util)
+(ns thornydev.go-lightly.util)
 
 ;; right now this is for use only with the lamina channels which can be closed
 ;; copied and modified from with-open from clojure.core

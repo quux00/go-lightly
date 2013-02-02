@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.generator-kachayev
+(ns thornydev.go-lightly.boring.generator-kachayev
   (:use lamina.core)
   (:import (java.util.concurrent TimeoutException)))
 

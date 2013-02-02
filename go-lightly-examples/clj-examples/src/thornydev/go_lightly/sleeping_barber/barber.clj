@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.sleeping-barber.barber
+(ns thornydev.go-lightly.sleeping-barber.barber
   (:refer-clojure :exclude [peek take])
   (:require [thornydev.go-lightly.core :refer :all]))
 

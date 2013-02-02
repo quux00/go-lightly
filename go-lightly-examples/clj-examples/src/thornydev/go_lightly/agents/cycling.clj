@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.agents.cycling)
+(ns thornydev.go-lightly.agents.cycling)
 
 ;; --- [sync master controller version] --- ;;
 

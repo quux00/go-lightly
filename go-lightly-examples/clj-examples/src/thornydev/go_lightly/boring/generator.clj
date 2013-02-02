@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.generator
+(ns thornydev.go-lightly.boring.generator
   (:require [thornydev.go-lightly.core :as go]))
 
 ;; ---[ Use the go macro that requires a stop ]--- ;;

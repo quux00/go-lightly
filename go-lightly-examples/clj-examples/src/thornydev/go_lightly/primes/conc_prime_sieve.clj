@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.primes.conc-prime-sieve
+(ns thornydev.go-lightly.primes.conc-prime-sieve
   (:require [thornydev.go-lightly.core :as go]))
 
 ;; A Clojure implementation of the Concurrent Primary Sieve

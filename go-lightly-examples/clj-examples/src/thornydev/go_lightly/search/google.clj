@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.search.google
+(ns thornydev.go-lightly.search.google
   (:require [thornydev.go-lightly.core :as go]))
 
 ;; Implementation of Pike's Google IO 2012 example

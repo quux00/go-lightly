@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.sleeping-barber.sandbox
+(ns thornydev.go-lightly.sleeping-barber.sandbox
   (:require [thornydev.go-lightly.core :as go]))
 
 

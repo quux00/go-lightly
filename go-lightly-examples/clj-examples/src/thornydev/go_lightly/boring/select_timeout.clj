@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.select-basic
+(ns thornydev.go-lightly.boring.select-basic
   (:require [thornydev.go-lightly.core :as go]))
 
 (defn- boring [msg]

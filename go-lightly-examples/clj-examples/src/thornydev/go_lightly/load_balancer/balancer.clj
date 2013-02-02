@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.load-balancer.balancer
+(ns thornydev.go-lightly.load-balancer.balancer
   (:refer-clojure :exclude [peek take])
   (:require [thornydev.go-lightly.core :refer :all]))
 

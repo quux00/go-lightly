@@ -1,20 +1,20 @@
-(ns thornydev.go-lightly.examples.run-examples
+(ns thornydev.go-lightly.run-examples
   (:require
-   [thornydev.go-lightly.examples.boring.boringv1 :as v1]
-   [thornydev.go-lightly.examples.boring.generator-kachayev :as genk]
-   [thornydev.go-lightly.examples.boring.generator-sq :as gensq]
-   [thornydev.go-lightly.examples.boring.generator :as gengo]
-   [thornydev.go-lightly.examples.boring.generator-lamina :as genlam]
-   [thornydev.go-lightly.examples.boring.multiplex-kachayev :as mk]
-   [thornydev.go-lightly.examples.boring.multiplex :as plex]
-   [thornydev.go-lightly.examples.boring.multiplex-lamina :as plam]
-   [thornydev.go-lightly.examples.boring.multiseq-sq :as ssq]
-   [thornydev.go-lightly.examples.search.google-lamina :as googlam]
-   [thornydev.go-lightly.examples.search.google :as goog]
-   [thornydev.go-lightly.examples.primes.conc-prime-sieve :refer [sieve-main]]
-   [thornydev.go-lightly.examples.webcrawler.webcrawler :as crawl]
-   [thornydev.go-lightly.examples.whispers.chinese-whispers :as whisp]
-   [thornydev.go-lightly.examples.load-balancer.balancer :as bal])
+   [thornydev.go-lightly.boring.boringv1 :as v1]
+   [thornydev.go-lightly.boring.generator-kachayev :as genk]
+   [thornydev.go-lightly.boring.generator-sq :as gensq]
+   [thornydev.go-lightly.boring.generator :as gengo]
+   [thornydev.go-lightly.boring.generator-lamina :as genlam]
+   [thornydev.go-lightly.boring.multiplex-kachayev :as mk]
+   [thornydev.go-lightly.boring.multiplex :as plex]
+   [thornydev.go-lightly.boring.multiplex-lamina :as plam]
+   [thornydev.go-lightly.boring.multiseq-sq :as ssq]
+   [thornydev.go-lightly.search.google-lamina :as googlam]
+   [thornydev.go-lightly.search.google :as goog]
+   [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]]
+   [thornydev.go-lightly.webcrawler.webcrawler :as crawl]
+   [thornydev.go-lightly.whispers.chinese-whispers :as whisp]
+   [thornydev.go-lightly.load-balancer.balancer :as bal])
   (:gen-class))
 
 (declare run-programs)

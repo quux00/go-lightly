@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.examples.boring.multiplex
+(ns thornydev.go-lightly.boring.multiplex
   (:require [thornydev.go-lightly.core :as go]))
 
 (defn- boring [msg]

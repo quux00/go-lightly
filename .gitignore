@@ -18,3 +18,4 @@ go-examples/src/boring-multiseq/boring-multiseq
 go-examples/src/boring-select/boring-select
 go-examples/src/sleeping-barbers/sleeping-barbers
 clj-examples/thornydev/go_lightly/examples/sleeping_barber/sandbox.clj
+go-lightly-examples/go-examples/src/search/search
