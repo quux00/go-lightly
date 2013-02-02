@@ -268,3 +268,38 @@ size             .size           .size
 https://groups.google.com/forum/?hl=fr&fromgroups=#!topic/golang-nuts/koCM3i-bbMs
 * Notes from above
 ** Synchronous channels have a lot of advantages by making program flow predictable and easier to think about.
+
+
+## Notes on Alexey's slides
+
+Second Modern Concurrency slide - you list Actors, STM and dataflow, but you don't list the Go-style CSP routines and channels.  Is that an oversight or do you consider them a subform of Actors?
+
+For the Erlang and Go gists, you list the same gist twice in a row - why?
+
+The quote from Pike on the Go Channels page - I heard him say it, but I don't get it, do you?  Why is writing to a Go channel like writing to a file descriptor (rather than a filename).  That analogy doesn't make sense to me.  What do you think?  
+
+I like the analogy of Go channels as portable actor mailboxes.  Interesting way to think about it.
+
+====
+
+You seem to be arguing that you should only use the native form of concurrency built into the language.  So should one not do Go channels or Actors in Clojure for example?
+
+
+----
+
+I'm not sure I like the "Why functional programming matters in Clojure" slide - there is more to it than that. First the slide is title "Clojure Concurrency Primitives", but doesn't actually list those.
+
+Clojure's concurrency primitives are:
+
+* efficient immutable data structures
+* STM (which you do mention on other slides)
+* atoms: synchronous atomic changes to a single data structure via CAS
+* agents: asynchronous atomic changes to a single data structure
+
+In particular, agents are an alternative model to Actors and (to some degree) Go channels.  Like Actors, they actually do a have a "mailbox" - when multiple sends are made to agent by simultaneous threads,  Clojure queues them up to be executed one at a time.  The key difference is that Actors encapsulate behavior and state, where as agents only encapsulte state.  Furthermore, Actors have private state, but agents have public shared state.  You send arbitrary behavior/functions to agents in order to ultimately changed their state in a thread safe.
+
+Which leads to a question I've been wondering about while working on Go channels in Clojure.  Is programming with agents functionally equivalent to programming with Actors or go routines and go channels?  In other words, can you solve all the same problems?  Or do you need to supplement Clojure's model with concurrent queues from Java?  Clojure's model isn't complete in and of itself, as it relies on the rest of the Java model (particularly constructs in java.util.concurrent library) to round out all the primitives needed to do effective modern concurrency.  Agree or disagree?
+
+
+
+
