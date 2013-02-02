@@ -1,5 +1,8 @@
 package main
 
+// Copyright Alexey Kachayev
+// https://gist.github.com/4634932
+
 import (
   "fmt"
   "math/rand"

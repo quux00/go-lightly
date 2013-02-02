@@ -233,7 +233,7 @@ From the command line, spawning 100 workers, 300 requesters and running until 20
 
 *namespace*: thornydev.go-lightly.sleeping-barber.barber
 
-The [sleeping barber problem](https://en.wikipedia.org/wiki/Sleeping_barber_problem) is a classic concurrency programming scenario that traditionally is implemented with locks to avoid race conditions and deadlocks.  Alexey Kachayev implemented an example in Go that is very simple to reason about.  I translated his implemented into a Clojure one using go-lightly.
+The [sleeping barber problem](https://en.wikipedia.org/wiki/Sleeping_barber_problem) is a classic concurrency programming scenario that traditionally is implemented with locks to avoid race conditions and deadlocks.  [Alexey Kachayev](https://github.com/kachayev) implemented an [example in Go](https://gist.github.com/4688906) that is very simple to reason about.  I translated his implemented into a Clojure one using go-lightly.
 
 Of note is that it uses `selectf` in a loop and has no mutable state (no atoms, Refs or agents).  The "shop-state" is a map that is handled by the single thread in the barber-shop fn.  Since `selectf` returns the new state each time, that is passed back to the top of the loop with `recur`.
 
@@ -259,7 +259,7 @@ From the REPL:
     user=> (barb/-main 500)
     ;; ... runs for 500 seconds printing out what is happening
 
-From the command line, spawning 100 workers, 300 requesters and running until 2000 requests are processed
+From the command line, running for 500 millis:
 
     $ lein run :barber 500
     ;; ... runs for 500 seconds printing out what is happening
