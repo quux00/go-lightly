@@ -11,13 +11,16 @@ Below is a quick summary of each and how to run it.  All can be run from the REP
 * [load-balancer](#balancer)
 * [chinese whispers](#whispers)
 * [webcrawler](#webcrawler)
+* [sleeping barbers](#barbers)
+
+*Note*: to run these examples, cd into the `go-lightly-examples/clj-examples/` directory.
 
 ----
 
 <a name="primeSieve"></a>
 ### conc-prime-sieve
 
-*namespace*: thornydev.primes.conc-prime-sieve
+**namespace**: thornydev.primes.conc-prime-sieve
 
 Based on Go implementation at: http://play.golang.org/p/9U22NfrXeq
 
@@ -33,7 +36,7 @@ This example is important because it shows how to pipeline channels and shows a 
 From the repl:
 
 ```clj
-user=> (require '[thornydev.go-lightly.examples.primes.conc-prime-sieve :as pr])
+user=> (require '[thornydev.go-lightly.primes.conc-prime-sieve :as pr])
 nil
 user=> (pr/sieve-main)  ;; will print the first 10 prime numbers
 ...
@@ -50,7 +53,7 @@ From the command line, you can use the default that runs the first 10:
 <a name="search"><
 ### "google" search examples
 
-*namespace*: thornydev.search.google
+**namespace**: thornydev.search.google
 
 In his 2012 Google IO presentation, Pike builds up this example in Go, so this is the Clojure version.  The intermediate versions are there, labeled "google-1", "google-2", etc.  The final version is `google-3`.
 
@@ -61,7 +64,7 @@ This example demonstrates a search scenario where you want to query a set of res
 From the REPL:
 
 ```clj
-user=> (require '[thornydev.go-lightly.examples.search.google :as goog])
+user=> (require '[thornydev.go-lightly.search.google :as goog])
 nil
 user=> (goog/google-main :goog3.0)
 [web1 result for 'clojure'
@@ -81,7 +84,7 @@ From the command line:
 <a name="balancer"></a>
 ### load-balancer
 
-**namespace**: thornydev.go-lightly.examples.load-balancer.balancer
+**namespace**: thornydev.go-lightly.load-balancer.balancer
 
 Based on the load balancer example that Rob Pike presented at the 2010 Google IO conference and the 2012 Heroku conference.  I haven't found working code for this in Go yet.  This is a Clojure implementation using go-lightly based closely on the Go implementation snippets Pike showed.
 
@@ -107,7 +110,7 @@ You can specify how many workers to spawn up (each in its own thread/go-lightly 
 From the REPL:
 
 ```clj
-user=> (require '[thornydev.go-lightly.examples.load-balancer.balancer :as bal])
+user=> (require '[thornydev.go-lightly.load-balancer.balancer :as bal])
 nil
 ;; spawn 22 workers, 66 requesters and run until 444 requests are processed
 user=> (bal/-main 22 444)
@@ -123,7 +126,7 @@ From the command line, spawning 100 workers, 300 requesters and running until 20
 <a name="whispers"></a>
 ### chinese whispers
 
-**namespace**: thornydev.go-lightly.examples.whispers.chinese-whispers
+**namespace**: thornydev.go-lightly.whispers.chinese-whispers
 
 Pike shows this example (in Go) in his 2012 Heroku presentation to show off the idea that you can spawn up a lot of Go routines in Go and have it run efficiently.  I did this as a test in Clojure to see how far you could push this with JVM threads.
 
@@ -200,7 +203,7 @@ The program can take up to three optional args
 
 From the REPL:
 
-    user=> (require '[thornydev.go-lightly.examples.webcrawler.webcrawler :as wc])
+    user=> (require '[thornydev.go-lightly.webcrawler.webcrawler :as wc])
     nil
     user=> (wc/-main 8 2500)
     ------------------------------
@@ -221,3 +224,43 @@ From the command line, spawning 100 workers, 300 requesters and running until 20
     word-frequencies: 3579
     crawled-urls: 26
     ------------------------------
+
+
+----
+
+<a name="barbers"></a>
+### sleeping barbers
+
+*namespace*: thornydev.go-lightly.sleeping-barber.barber
+
+The [sleeping barber problem](https://en.wikipedia.org/wiki/Sleeping_barber_problem) is a classic concurrency programming scenario that traditionally is implemented with locks to avoid race conditions and deadlocks.  Alexey Kachayev implemented an example in Go that is very simple to reason about.  I translated his implemented into a Clojure one using go-lightly.
+
+Of note is that it uses `selectf` in a loop and has no mutable state (no atoms, Refs or agents).  The "shop-state" is a map that is handled by the single thread in the barber-shop fn.  Since `selectf` returns the new state each time, that is passed back to the top of the loop with `recur`.
+
+This implementation could be split up into more independently operating threads (go-lightly routines), but this version has a thread for new clients coming into teh barber shop, the main barber-shop thread and then one thread for each barber while s/he is cutting hair.  Since the main locus of control is the `selectf` in the barber-shop fn, reasoning about the program is very akin to an single-threaded event loop in node.js or other evented models.
+
+**How to run**
+
+The program takes only one cmd line arg:
+* arg1: number of milliseconds to run (defaults to 2000)
+
+However, you can edit the file to tweak three other settings:
+
+```clj
+(def ^:dynamic *num-barbers* 3)
+(def ^:dynamic *num-hall-seats* 5)
+(def ^:dynamic *cutting-time* 100)
+```
+
+From the REPL:
+
+    user=> (require '[thornydev.go-lightly.sleeping-barber.barber :as barb])
+    nil
+    user=> (barb/-main 500)
+    ;; ... runs for 500 seconds printing out what is happening
+
+From the command line, spawning 100 workers, 300 requesters and running until 2000 requests are processed
+
+    $ lein run :barber 500
+    ;; ... runs for 500 seconds printing out what is happening
+

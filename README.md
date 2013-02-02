@@ -56,7 +56,7 @@ Example:
 
 will run all three of those targets sequentially.
 
-For details on the most important examples see [the README](https://github.com/midpeter444/go-lightly/tree/master/clj-examples) in the clj-examples directory.
+For details on the most important examples see [the README](https://github.com/midpeter444/go-lightly/tree/master/go-lightly-examples/clj-examples) in the clj-examples directory.
 
 
 ## License
