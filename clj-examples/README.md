@@ -176,9 +176,9 @@ From the REPL:
 
 From the command line, spawning 100 workers, 300 requesters and running until 2000 requests are processed
 
-    midpeter444:~/lang/clojure/projects/go-lightly$ lein run :whispers 500
+    $ lein run :whispers 500
     501
-    midpeter444:~/lang/clojure/projects/go-lightly$ lein run :whispers-as-go 500
+    $ lein run :whispers-as-go 500
     501
 
 ----

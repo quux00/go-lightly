@@ -41,7 +41,8 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 * Testing with Clojure 1.3, 1.4 and 1.5 complete.  See requirements section above for details.
 * sleeping barbers example added
 
-0.3.1 published on 28-Jan-2013.  It adds:
+**28-Jan-2013**
+v. 0.3.1 published. It adds:
 
 * a `selectf` function, which is a select control structure modeled after the select from Go.
 * a load-balancer example (in clj-examples) that implements Pike's load-balancer exmaple in Go and shows why the `selectf` function is a necessary concept
@@ -55,6 +56,7 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 
 There is a race condition in the current implementation of select and selectf that needs to be handled correctly.
 
+----
 
 # Documentation
 
@@ -62,7 +64,7 @@ There is a race condition in the current implementation of select and selectf th
 
 The clj-examples and go-examples directories have many examples of using Go-style concurrency constructs.
 
-See all the thornydev.go-lightly.core-test that tests the go-lightly library.
+See the thornydev.go-lightly.core-test that tests the go-lightly library.
 
 ## A note on namespaces
 
