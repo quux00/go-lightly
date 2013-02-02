@@ -41,9 +41,9 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 
 v. 0.3.2 published
 
+* go-lightly is now [available on Clojars](https://clojars.org/thornydev/go-lightly)
 * race condition in the select functions was solved by adding a poll method to GoChannel (based on .poll from the Java concurrent queues)
 * Testing with Clojure 1.3, 1.4 and 1.5 complete.  See requirements section above for details.
-* sleeping barbers example added
 
 **28-Jan-2013**
 
@@ -148,7 +148,5 @@ While developing the library, I did some "thinking out loud" in a set of blog po
 ## License
 
 Copyright © 2012 Michael Peterson
-
-Some of the example code in the go-examples directory is copyright Rob Pike or and some in go-examples and clj-examples is copyright [Alexey Kachayev](https://github.com/kachayev).
 
 Distributed under the Eclipse Public License, the same as Clojure.
