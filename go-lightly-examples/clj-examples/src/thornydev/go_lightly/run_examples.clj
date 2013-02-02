@@ -14,7 +14,8 @@
    [thornydev.go-lightly.primes.conc-prime-sieve :refer [sieve-main]]
    [thornydev.go-lightly.webcrawler.webcrawler :as crawl]
    [thornydev.go-lightly.whispers.chinese-whispers :as whisp]
-   [thornydev.go-lightly.load-balancer.balancer :as bal])
+   [thornydev.go-lightly.load-balancer.balancer :as bal]
+   [thornydev.go-lightly.sleeping-barber.barber :as barber])
   (:gen-class))
 
 (declare run-programs)
@@ -77,8 +78,8 @@
 
       ;; ---[ concurrency prime sieve ]--- ;;
       :primes (sieve-main)
-
-      (println "WARN: argument not recognized"))
+      
+      (println "WARN: argument not recognized")(println "WARN: argument not recognized"))
     (println "------------------"))
   )
 
@@ -104,6 +105,11 @@
    ;;  arg1: number of worker go routines
    ;;  arg2: number of requests to process before shutting down
    (= ":balancer" (first args)) (apply bal/-main (rest args))
+
+   ;; ---[ sleeping-barber ]--- ;;
+   ;; after :barber,
+   ;;  arg1: time to run in millis
+   (= ":barber" (first args)) (apply barber/-main (rest args))
    :else (run-programs args))
   
   (shutdown-agents))

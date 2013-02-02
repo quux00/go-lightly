@@ -1,9 +1,3 @@
-/target
-/lib
-/classes
-/checkouts
-pom.xml
-pom.xml.asc
 *.jar
 *.class
 .lein-deps-sum
@@ -12,10 +6,10 @@ pom.xml.asc
 .lein-repl-history
 go-examples/src/threadring/threadring
 *.mp4
-go-examples/src/boring-generators/boring-generators
-go-examples/src/boring-multiplexing/boring-multiplexing
-go-examples/src/boring-multiseq/boring-multiseq
-go-examples/src/boring-select/boring-select
-go-examples/src/sleeping-barbers/sleeping-barbers
-clj-examples/thornydev/go_lightly/examples/sleeping_barber/sandbox.clj
+go-lightly-examples/go-examples/src/boring-generators/boring-generators
+go-lightly-examples/go-examples/src/boring-multiplexing/boring-multiplexing
+go-lightly-examples/go-examples/src/boring-multiseq/boring-multiseq
+go-lightly-examples/go-examples/src/boring-select/boring-select
+go-lightly-examples/go-examples/src/sleeping-barbers/sleeping-barbers
+go-lightly-examples/clj-examples/src/thornydev/go_lightly/examples/sleeping_barber/sandbox.clj
 go-lightly-examples/go-examples/src/search/search

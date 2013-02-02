@@ -5,3 +5,4 @@ go-examples/src/boring-select/boring-select
 go-examples/src/sleeping-barbers/sleeping-barbers
 go-examples/src/threadring/threadring
 go-lightly-examples/go-examples/src/search/search
+/clj-examples/src/threadring
