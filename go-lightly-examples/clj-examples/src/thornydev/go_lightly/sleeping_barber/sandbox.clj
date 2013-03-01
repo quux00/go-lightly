@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.sleeping-barber.sandbox
-  (:require [thornydev.go-lightly.core :as go]))
+  (:require [thornydev.go-lightly :as go]))
 
 
 (def state {:v []})

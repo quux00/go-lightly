@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.exmples.boring.multiseq-tq
-  (:require [thornydev.go-lightly.core :refer :all]))
+  (:require [thornydev.go-lightly :refer :all]))
 
 (defn- boring [msg]
   (let [wait-ch (channel)

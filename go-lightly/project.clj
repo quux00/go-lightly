@@ -1,4 +1,4 @@
-(defproject thornydev/go-lightly "0.3.2"
+(defproject thornydev/go-lightly "0.4.0"
   :description "Clojure library to facilitate CSP concurrent programming based on Go concurrency constructs"
   :url "https://github.com/midpeter444/go-lightly"
   :license {:name "Eclipse Public License"

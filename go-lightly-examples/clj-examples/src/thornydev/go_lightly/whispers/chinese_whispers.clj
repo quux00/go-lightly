@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.whispers.chinese-whispers
-  (:require [thornydev.go-lightly.core :as go]))
+  (:require [thornydev.go-lightly :as go]))
 
 (defn whisper [left right]
   (go/put left (inc (go/take right))))

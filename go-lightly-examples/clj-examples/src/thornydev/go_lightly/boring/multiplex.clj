@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.boring.multiplex
-  (:require [thornydev.go-lightly.core :as go]))
+  (:require [thornydev.go-lightly :as go]))
 
 (defn- boring [msg]
   (let [ch (go/channel)]

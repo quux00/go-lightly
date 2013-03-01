@@ -1,6 +1,6 @@
 (ns thornydev.go-lightly.sleeping-barber.barber
   (:refer-clojure :exclude [peek take])
-  (:require [thornydev.go-lightly.core :refer :all]))
+  (:require [thornydev.go-lightly :refer :all]))
 
 ;; Implementation based on Go routine implementation
 ;; by Alexey Kacayev: https://gist.github.com/4688906

@@ -1,6 +1,6 @@
 (ns thornydev.go-lightly.load-balancer.balancer
   (:refer-clojure :exclude [peek take])
-  (:require [thornydev.go-lightly.core :refer :all]))
+  (:require [thornydev.go-lightly :refer :all]))
 
 ;; Clojure version of a load balancer using go-lightly routines and channels
 ;; Based on Go version presented by Rob Pike in 2010 Google IO Conf and

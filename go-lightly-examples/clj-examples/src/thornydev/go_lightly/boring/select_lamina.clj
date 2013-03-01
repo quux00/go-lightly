@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.boring.select-lamina
-  (:require [thornydev.go-lightly.core :as go]
+  (:require [thornydev.go-lightly :as go]
             [thornydev.go-lightly.util :refer [with-channel-open]]
             [lamina.core :refer [close] :as lam])
   (:import (java.util.concurrent TimeoutException)))

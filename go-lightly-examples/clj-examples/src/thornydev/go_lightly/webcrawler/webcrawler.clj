@@ -1,5 +1,5 @@
 (ns thornydev.go-lightly.webcrawler.webcrawler
-  (:require [thornydev.go-lightly.core :as go]
+  (:require [thornydev.go-lightly :as go]
             [net.cgrand.enlive-html :as enlive]
             [clojure.java.io :refer [as-url]]
             [clojure.string :refer [lower-case]])

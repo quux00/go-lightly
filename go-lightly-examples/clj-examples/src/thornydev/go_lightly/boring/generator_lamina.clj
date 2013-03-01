@@ -1,6 +1,6 @@
 (ns thornydev.go-lightly.boring.generator-lamina
   (:require
-   [thornydev.go-lightly.core :refer [go&]]
+   [thornydev.go-lightly :refer [go&]]
    [thornydev.go-lightly.util :refer [with-channel-open]]
    [lamina.core :refer [channel enqueue close
                         closed? read-channel]]))
