@@ -1,7 +1,7 @@
-(ns thornydev.go-lightly.core-test
+(ns thornydev.go-lightly-test
   (:refer-clojure :exclude [peek take])
   (:use clojure.test
-        thornydev.go-lightly.core))
+        thornydev.go-lightly))
 
 ;; ---[ helper fns ]--- ;;
 
@@ -540,7 +540,7 @@
           (is (= :foo (first seqch) (last seqch))))
         (is (= (zero? (size ch)))))))
 
-  (testing "draininng an empty channel returns empty seq"
+  (testing "draining an empty channel returns empty seq"
     (is (empty? (drain (channel 2)))))
 
   (testing "synchronous channel"

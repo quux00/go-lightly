@@ -1,4 +1,4 @@
-(ns thornydev.go-lightly.core
+(ns thornydev.go-lightly
   (:refer-clojure :exclude [peek take])
   (:import (java.io Closeable)
            (java.util ArrayList)
