@@ -1,5 +1,6 @@
 (ns thornydev.go-lightly.primes.conc-prime-sieve
-  (:require [thornydev.go-lightly :as go]))
+  (:refer-clojure :exclude [take peek])
+  (:require [thornydev.go-lightly :refer :all]))
 
 ;; A Clojure implementation of the Concurrent Primary Sieve
 ;; example in Go, using the go-lightly library
@@ -14,24 +15,23 @@
   "send the sequence 2,3,4 ... to the channel"
   [channel]
   (doseq [i (iterate inc 2)]
-    (go/put channel i)))
- 
+    (put channel i)))
 
 (defn filter-primes [cin cout prime]
-  (loop [i (go/take cin)]
+  (loop [i (take cin)]
     (when-not (zero? (mod i prime))
-      (go/put cout i))
-    (recur (go/take cin))))
+      (put cout i))
+    (recur (take cin))))
 
 (defn sieve-main [& args]
-  (let [chfirst (go/channel)]
-    (go/go (generate chfirst))
+  (let [chfirst (channel)]
+    (go (generate chfirst))
     (loop [i (Integer/valueOf (or (first args) 10))
            ch chfirst]
       (when (pos? i)
-        (let [prime (go/take ch)
-              ch1 (go/channel)]
+        (let [prime (take ch)
+              ch1 (channel)]
           (println prime)
-          (go/go (filter-primes ch ch1 prime))
+          (go (filter-primes ch ch1 prime))
           (recur (dec i) ch1)))))
-  (go/stop))
+  (stop))

@@ -3,6 +3,7 @@
    [thornydev.go-lightly.boring.boringv1 :as v1]
    [thornydev.go-lightly.boring.generator-kachayev :as genk]
    [thornydev.go-lightly.boring.generator-sq :as gensq]
+   [thornydev.go-lightly.boring.generator-tq :as gentq]
    [thornydev.go-lightly.boring.generator :as gengo]
    [thornydev.go-lightly.boring.generator-lamina :as genlam]
    [thornydev.go-lightly.boring.multiplex-kachayev :as mk]
@@ -27,6 +28,10 @@
       :gen1 (gengo/single-generator)
       :gen2 (gengo/multiple-generators)
       :gen-amp (gengo/multiple-generators&)
+      
+      :gen-tq1 (gentq/single-generator)
+      :gen-tq2 (gentq/multiple-generators)
+      :gen-tqamp (gentq/multiple-generators&)
 
       :gen-sq1 (gensq/single-generator)
       :gen-sq2 (gensq/multiple-generators)

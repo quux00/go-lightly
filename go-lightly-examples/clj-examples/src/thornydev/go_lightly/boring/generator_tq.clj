@@ -1,20 +1,22 @@
-(ns thornydev.go-lightly.boring.generator
-  (:refer-clojure :exclude [peek take])  
-  (:require [thornydev.go-lightly :refer :all]))
+(ns thornydev.go-lightly.boring.generator-tq
+  (:require [thornydev.go-lightly :refer [go go& stop]])
+  (:import (java.util.concurrent LinkedTransferQueue)))
 
-;; ---[ Use the go macro that requires a stop ]--- ;;
+
+(defn- channel []
+  (LinkedTransferQueue.))
 
 (defn- boring [msg]
   (let [ch (channel)]
     (go (loop [i 0]
-          (put ch (str msg " " i))
+          (.transfer ch (str msg " " i))
           (Thread/sleep (rand-int 1000))
           (recur (inc i))))
     ch))
 
 (defn single-generator []
   (let [ch (boring "boring!")]
-    (dotimes [_ 5] (println "You say:" (take ch))))
+    (dotimes [_ 5] (println "You say:" (.take ch))))
   (println "You're boring: I'm leaving.")
   (stop))
 
@@ -22,8 +24,8 @@
   (let [joe (boring "Joe")
         ann (boring "Ann")]
     (dotimes [_ 10]
-      (println (take joe))
-      (println (take ann))))
+      (println (.take joe))
+      (println (.take ann))))
   (println "You're boring: I'm leaving.")
   (stop))
 
@@ -34,7 +36,7 @@
 (defn- boring& [msg]
   (let [ch (channel)]
     (go& (loop [i 0]
-           (put ch (str msg " " i))
+           (.transfer ch (str msg " " i))
            (Thread/sleep (rand-int 1000))
            (recur (inc i))))
     ch))
@@ -43,16 +45,6 @@
   (let [joe (boring& "Joe&")
         ann (boring& "Ann&")]
     (dotimes [_ 10]
-      (println (take joe))
-      (println (take ann))))
+      (println (.take joe))
+      (println (.take ann))))
   (println "You're boring: I'm leaving."))
-
-
-
-
-
-;; ---[ sandbox for learning LinkedTransferQueue ]--- ;;
-
-(defn prf [& vals]
-  (println (apply str (interpose " " (map #(if (nil? %) "nil" %) vals))))
-  (flush))

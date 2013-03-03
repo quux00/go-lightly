@@ -22,14 +22,13 @@
 ;; Ideas here adapted from:
 ;; https://gist.github.com/3146759#file-clojure-channels-4-timeouts-clj
 
-
 ;; here we use a general purpose with-timeout macro
 ;; from the go-lightly project
 ;; Note: lamina has its own with-timeout macro, but that
 ;;       is for doing a single read from an individual ResultChannel
 ;;       not a general purpose timeout operation
 (defn select-lamina-timeout-whole-conversation-v1 []
-  (go/with-channel-open [joe (boring "Joe")
+  (with-channel-open [joe (boring "Joe")
                          ann (boring "Ann")
                          ch (fan-in joe ann)]
     (go/with-timeout 1000
@@ -41,7 +40,7 @@
 ;; do whole-conversation timeout by using periodically
 ;; to pump a timeout message into the downstream channel
 (defn select-lamina-timeout-whole-conversation-v2 []
-  (go/with-channel-open
+  (with-channel-open
     [joe (boring "Joe")
      ann (boring "Ann")
      timer (lam/periodically 1000 (fn [] :too-slow))
@@ -55,7 +54,7 @@
 
 
 (defn select-lamina-timeout-per-round-v1 []
-  (go/with-channel-open [joe (boring "Joe")
+  (with-channel-open [joe (boring "Joe")
                          ann (boring "Ann")
                          ch (fan-in joe ann)] 
     (try
@@ -65,7 +64,7 @@
         (println "You're boring: I'm leaving.")))))
 
 (defn select-lamina-timeout-per-round-v2 []
-  (go/with-channel-open [joe (boring "Joe")
+  (with-channel-open [joe (boring "Joe")
                          ann (boring "Ann")
                          ch (fan-in joe ann)] 
     ;; 2nd param is a timeout arg (in millis)

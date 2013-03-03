@@ -315,7 +315,7 @@
   a TimeoutChannel). Returns the value returned by the handler fn."
   [& args]
   (binding [*choose-fn* choose-tuple]
-    (let [chfnmap (apply hash-map args)
+    (let [chfnmap (apply array-map args)
           [keywords chans] (partition-bifurcate
                             keyword?
                             (reduce #(conj % %2) [] (keys chfnmap)))
