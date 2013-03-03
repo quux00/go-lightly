@@ -47,8 +47,6 @@ A new signed jar has been pushed to Clojars and promoted to release status.
 
 The wiki and examples in clj-examples has been updated to match this ns change.
 
-*Note*: I also pushed a new signed version of 0.3.2 that is promoted to release status in case anyone needs to use that one.
-
 
 **02-Feb-2013:**
 
