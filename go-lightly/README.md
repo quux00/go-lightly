@@ -6,7 +6,7 @@ Go-lightly is a Clojure library that facilitates building concurrent programs in
 
 CSP addresses concurrency interaction patterns - how separate processes, threads or routines communicate and coordinate with each other via **message passing**. A CSP language or library is intended to provided constructs that reduce the complexity of inter-process/inter-thread communication using primitives that are easy to use and reason about. This means not having to be a deep expert in a system's memory model in order to do concurrent programming. Instead, it hides semaphores, mutexes, barriers and other low level concurrency constructs in higher-level abstractions.
 
-The core constructs of the Go concurrency programming are:
+The core constructs of the Go concurrency programming model are:
 
 1. Go routines
 2. Synchronous (blocking) channels
@@ -23,7 +23,7 @@ In this overview, I introduce these Go concepts using Go code examples and termi
 
 Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
-Go-lightly has been tested with Clojure 1.3.0, 1.4.0 and 1.5-RC4.  The core library (and its test) are compatible with all three versions.  Some of the examples will **not** run under 1.3, but all will run with 1.4 and 1.5.
+Go-lightly has been tested with Clojure 1.3.0, 1.4.0 and 1.5.  The core library (and its test) are compatible with all three versions.  Some of the examples will **not** run under 1.3, but all will run with 1.4 and 1.5.
 
 The core go-lightly library has no dependencies beyond Clojure and Java 7.  However, some of the example code requires Zach Tellman's lamina library, since I played with ways to emulate some Go-concurrency programming features using lamina.
 
@@ -32,7 +32,7 @@ The core go-lightly library has no dependencies beyond Clojure and Java 7.  Howe
 
 You can get an overview of all features of the go-lightly library from the "[learn from the REPL](https://github.com/midpeter444/go-lightly/wiki/Tutorial:-Learn-go%E2%88%92lightly-at-the-REPL)" section of the wiki.
 
-The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in progress) covers additional notes and details not covered in the above tutorial.
+The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) dives into each area more fully.
 
 
 ## Updates
@@ -66,11 +66,6 @@ v. 0.3.1 published. It adds:
   * ignores InterruptedException, allowing you to call (stop) on infinite go routines without any error printing to the screen
   * catching any other Exception and printing to stdout, since exceptions thrown in a Clojure future get swallowed and make it hard to debug during development
   * it is expected that you will using `gox` while developing and then change it to `go` for general availability/production, but you can stick with `gox` for production code if that suits you
-
-
-## TODO
-
-Need to publish to Clojars.  0.3.2 will be the first version published for general availability.
 
 ----
 
@@ -132,7 +127,7 @@ Because I want to make sure all of these will run and end gracefully (not hang),
 
 Example:
 
-    $ lein run :gen-amp :gen-lam1 :google-3-alpha
+    $ lein run :gen-amp :gen-lam1 :goog3.0
 
 will run all three of those targets sequentially.
 
