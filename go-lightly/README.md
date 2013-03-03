@@ -37,6 +37,19 @@ The rest of [the wiki](https://github.com/midpeter444/go-lightly/wiki) (still in
 
 ## Updates
 
+**02-Mar-2013:**
+
+v. 0.4.0 published
+
+I have changed the namespace of go-lightly from `thornydev.go-lightly.core` to `thornydev.go-lightly` so 0.4.0 is **incompatible** with 0.3.2.
+
+A new signed jar has been pushed to Clojars and promoted to release status.
+
+The wiki and examples in clj-examples has been updated to match this ns change.
+
+*Note*: I also pushed a new signed version of 0.3.2 that is promoted to release status in case anyone needs to use that one.
+
+
 **02-Feb-2013:**
 
 v. 0.3.2 published
