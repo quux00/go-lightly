@@ -138,7 +138,7 @@ For details on the most important examples see [the README](https://github.com/m
 
 The [go-lightly wiki](https://github.com/midpeter444/go-lightly/wiki)
 
-While developing the library, I did some "thinking out loud" in a set of blog posts.  (Note these are out of date now for the go-lightly API, but still valid in terms of overall thoughts, ideas and approaches.)
+While developing the library, I did some "thinking out loud" in a set of blog posts.  (Note: I recently updated these blog posts to be current with the 0.4.0 version of go-lightly.
 
 * Part 1: [Go Concurrency Constructs in Clojure](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html)
 * Part 2: [Go Concurrency Constructs in Clojure: select](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html)
