@@ -75,7 +75,7 @@ v. 0.3.1 published. It adds:
 
 The clj-examples and go-examples directories have many examples of using Go-style concurrency constructs.
 
-See the thornydev.go-lightly.core-test that tests the go-lightly library.
+See the [thornydev.go-lightly-test](https://github.com/midpeter444/go-lightly/blob/master/go-lightly/test/thornydev/go_lightly_test.clj) that tests the go-lightly library.
 
 ## A note on namespaces
 
@@ -108,37 +108,16 @@ The latter is the option I typically show in my examples.
 
 ## Usage
 
-The go-lightly library is composed of one file: the thornydev.go-lightly.core namespace that defines helper macros and functions.  There is a test for it in the usual spot (using lein project structure).
+The go-lightly library is composed of one file: the thornydev.go-lightly namespace that defines helper macros and functions.  There is a test for it in the usual spot (using lein project structure).
 
-In addition, I have provided a number of usage examples that I assembled or wrote while thinking about how to develop this library.
-
-There are basically 4 categories of examples you'll see as you peruse the examples:
-
-1. Examples in Go in the go-examples directory from Rob Pike and golang website.  See the README in the go-examples directory on how to set up to run them.
-2. Examples in Clojure the clj-examples directory include:
-  1. Examples using Java's SynchronousQueue, TransferQueue and LinkedBlockingQueue as Go channels
-  2. Examples using the Clojure [lamina](https://github.com/ztellman/lamina) library as Go channels
-    * Some of these are taken from gists done by Alexey Kachayev in thinking about how to go CSP Go-style programming in Clojure
-  3. Examples using the go-lightly library
-
-Each example can be loaded up and run in the REPL.
-
-Because I want to make sure all of these will run and end gracefully (not hang), I also set up a massive case statement in the `thornydev.go-lightly.examples.run-examples/-main` method to run any of these via `lein run`.  Most can run be run with other targets, but some cannot since they take additional arguments.  See the run-examples.clj file for details.
-
-Example:
-
-    $ lein run :gen-amp :gen-lam1 :goog3.0
-
-will run all three of those targets sequentially.
-
-For details on the most important examples see [the README](https://github.com/midpeter444/go-lightly/tree/master/clj-examples) in the clj-examples directory.
+In addition, I have provided a number of usage examples that I assembled or wrote while thinking about how to develop this library.  See the [top level README](https://github.com/midpeter444/go-lightly) for more information.
 
 
 ## Resources
 
 The [go-lightly wiki](https://github.com/midpeter444/go-lightly/wiki)
 
-While developing the library, I did some "thinking out loud" in a set of blog posts.  (Note: I recently updated these blog posts to be current with the 0.4.0 version of go-lightly.
+While developing the library, I did some "thinking out loud" in a set of blog posts.  (Note: I recently updated these blog posts to be current with the 0.4.0 version of go-lightly).
 
 * Part 1: [Go Concurrency Constructs in Clojure](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure.html)
 * Part 2: [Go Concurrency Constructs in Clojure: select](http://thornydev.blogspot.com/2013/01/go-concurrency-constructs-in-clojure2.html)
