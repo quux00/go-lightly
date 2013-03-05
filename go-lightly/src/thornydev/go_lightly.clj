@@ -169,10 +169,11 @@
   (reset! (.prefer? channel) true)
   channel)
 
-(defn unprefer! [channel]
+(defn unprefer!
   "Modifies the channel to remove preferred status in a select
   statement, so it will be no longer be preferentially read
   from over a non-preferred channel."
+  [channel]
   (reset! (.prefer? channel) false)
   channel)
 
@@ -183,7 +184,7 @@
   @(.prefer? channel))
 
 (defn channel
-  "If no size is specifies, returns a synchronous blocking channel.
+  "If no size is specified, returns a synchronous blocking channel.
    If a size is passed is in, returns a bounded asynchronous channel."
   ([] (->Channel (LinkedTransferQueue.) (atom true) (atom false)))
   ([^long capacity]
@@ -227,9 +228,11 @@
   [chans]
   (seq (doall (filter #(not (nil? (peek %))) chans))))
 
-;; NOTE: the choose methods have a race condition issue
-;; they are assuming these ready chans are still ready but if another thread.
-;; The adopted solution is to use poll rather than take. If nothing is found
+;; NOTE: the choose methods have a race condition issue.
+;; Tey are assuming these ready chans are still ready but if another thread
+;; grabs the value between peek and take, it may incorrectly block waiting
+;; for another value to go on.
+;; The chosen solution is to use poll rather than take. If nothing is found
 ;; then return nil and then the calling method try again (possiblity with
 ;; a different channel).
 (defn- choose-val
