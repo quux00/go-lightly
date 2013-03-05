@@ -4,7 +4,6 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :profiles {:dev {:dependencies [[criterium "0.3.1"]]}}
-  :dependencies [[org.clojure/clojure "1.5.0"]]
+  :dependencies [[org.clojure/clojure "1.3.0"]]
   :scm {:name "git"
-        :tag "12f653361a88c4df14"
         :url "https://github.com/midpeter444/go-lightly"})
