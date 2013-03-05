@@ -103,9 +103,6 @@ Or you can simply use a namespace prefix to all the go-lightly.core functions:
       (go/take back-channel))))
 ```
 
-The latter is the option I typically show in my examples.
-
-
 ## Usage
 
 The go-lightly library is composed of one file: the thornydev.go-lightly namespace that defines helper macros and functions.  There is a test for it in the usual spot (using lein project structure).

@@ -116,10 +116,11 @@ nil
 user=> (bal/-main 22 444)
 ```
 
-From the command line, spawning 100 workers, 300 requesters and running until 2000 requests are processed
+From the command line, spawning 100 workers, 300 requesters (3x num workers) and running until 2000 requests are processed
 
     lein run :balancer 100 2000
 
+*Note*: the output is rather verbose - you'll probably think stack traces are being thrown.  It's just the output of the balancer "logs".
 
 ----
 
@@ -177,7 +178,7 @@ From the REPL:
 
 - see examples above
 
-From the command line, spawning 100 workers, 300 requesters and running until 2000 requests are processed
+From the command line, spawn 500 routines to whisper to each other
 
     $ lein run :whispers 500
     501
@@ -237,7 +238,7 @@ The [sleeping barber problem](https://en.wikipedia.org/wiki/Sleeping_barber_prob
 
 Of note is that it uses `selectf` in a loop and has no mutable state (no atoms, Refs or agents).  The "shop-state" is a map that is handled by the single thread in the barber-shop fn.  Since `selectf` returns the new state each time, that is passed back to the top of the loop with `recur`.
 
-This implementation could be split up into more independently operating threads (go-lightly routines), but this version has a thread for new clients coming into teh barber shop, the main barber-shop thread and then one thread for each barber while s/he is cutting hair.  Since the main locus of control is the `selectf` in the barber-shop fn, reasoning about the program is very akin to an single-threaded event loop in node.js or other evented models.
+This implementation could be split up into more independently operating threads (go-lightly routines), but this version has a thread for new clients coming into the barber shop, the main barber-shop thread and then one thread for each barber while s/he is cutting hair.  Since the main locus of control is the `selectf` in the barber-shop fn, reasoning about the program is very akin to an single-threaded event loop in node.js or other evented models.
 
 **How to run**
 
@@ -257,10 +258,10 @@ From the REPL:
     user=> (require '[thornydev.go-lightly.sleeping-barber.barber :as barb])
     nil
     user=> (barb/-main 500)
-    ;; ... runs for 500 seconds printing out what is happening
+    ;; ... runs for 500 milliseconds printing out what is happening
 
 From the command line, running for 500 millis:
 
     $ lein run :barber 500
-    ;; ... runs for 500 seconds printing out what is happening
+    ;; ... runs for 500 milliseconds printing out what is happening
 
