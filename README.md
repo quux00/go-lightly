@@ -11,7 +11,7 @@ CSP addresses concurrency interaction patterns - how separate processes, threads
 
 This repo is split into two parts:
 
-1. the core go-lightly library in the [go-lightly directory](https://github.com/midpeter444/go-lightly/tree/master/go-lightly), which is a lein project. go-lightly is now [available on Clojars](https://clojars.org/thornydev/go-lightly).
+1. the core go-lightly library in the [go-lightly directory](https://github.com/midpeter444/go-lightly/tree/master/go-lightly), which is a lein project. go-lightly is now [available on Clojars](https://clojars.org/thornydev/go-lightly/versions/0.4.0).
 2. a set of examples of CSP-style concurrent programming using Go concurrency constructs using in Clojure and Go
 
 To run the Go examples you will need Go installed.  See the [README](https://github.com/midpeter444/go-lightly/tree/master/go-lightly-examples/go-examples) in `go-lightly-examples/go-examples/`.
