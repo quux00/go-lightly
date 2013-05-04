@@ -21,7 +21,7 @@ In this overview, I introduce these Go concepts using Go code examples and termi
 
 ### Compatibility Notes, Minimal Requirements and Dependencies
 
-Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section below](#syncchan) for details on why this concurrent queue was chosen to implement Go synchronous channels.
+Go-lightly only works with Java 7 (and later) in order to use the java.util.concurrent.LinkedTransferQueue, which was added in Java 7.  See the [synchronous channels section in the wiki](https://github.com/midpeter444/go-lightly/wiki/Channels) for details on why this concurrent queue was chosen to implement Go synchronous channels.
 
 Go-lightly has been tested with Clojure 1.3.0, 1.4.0 and 1.5.  The core library (and its test) are compatible with all three versions.  Some of the examples will **not** run under 1.3, but all will run with 1.4 and 1.5.
 
@@ -52,7 +52,7 @@ The wiki and examples in clj-examples has been updated to match this ns change.
 
 v. 0.3.2 published
 
-* go-lightly is now [available on Clojars](https://clojars.org/thornydev/go-lightly)
+* go-lightly is now [available on Clojars](https://clojars.org/thornydev/go-lightly/versions/0.4.0)
 * race condition in the select functions was solved by adding a poll method to GoChannel (based on .poll from the Java concurrent queues)
 * Testing with Clojure 1.3, 1.4 and 1.5 complete.  See requirements section above for details.
 
